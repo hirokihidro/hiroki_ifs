@@ -54,7 +54,7 @@ Future<bool> connect(BluetoothDevice device) async {
       await device.connect(
         autoConnect: false,
         timeout: const Duration(seconds: 10),
-        license: License.values.first,
+        license: License.values.first
       );
       
       _connectedDevice = device;

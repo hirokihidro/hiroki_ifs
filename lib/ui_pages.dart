@@ -313,7 +313,7 @@ class MasterConfigPage extends StatefulWidget {
 class _MasterConfigPageState extends State<MasterConfigPage> {
   final _brokerCtrl = TextEditingController();
   final _portCtrl = TextEditingController();
-  final _delayCtrl = TextEditingController();
+  // delay controller removed
   final _oldPinController = TextEditingController();
 
   double _maxTemp = 40.0;
@@ -327,14 +327,14 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
     // Valores por defecto (idealmente se cargarían del dispositivo si hubiera un comando GET)
     _brokerCtrl.text = "hiroki.servidoraweb.net";
     _portCtrl.text = "8883";
-    _delayCtrl.text = "60";
+    // delay default no longer editable
   }
 
   @override
   void dispose() {
     _brokerCtrl.dispose();
     _portCtrl.dispose();
-    _delayCtrl.dispose();
+    // delay disposed earlier removed
     _oldPinController.dispose();
     super.dispose();
   }
@@ -353,7 +353,7 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
     final config = {
       "maxTemp": _maxTemp,
       "histeresis": _histeresis,
-      "delayCheck": int.tryParse(_delayCtrl.text) ?? 60,
+      // delayCheck omitted from config
       "broker": _brokerCtrl.text.trim(),
       "port": int.tryParse(_portCtrl.text) ?? 8883,
       "resetPin": _resetPin,
@@ -381,7 +381,8 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
     else if (widget.localBaseUrl != null) {
        try {
          final url = '${widget.localBaseUrl}/master_config?data=${Uri.encodeComponent(jsonPayload)}';
-         await http.get(Uri.parse(url)).timeout(const Duration(seconds: 3));
+         // quitar el tiempo de espera para que la petición no caduque
+         await http.get(Uri.parse(url));
          sent = true;
        } catch (_) {}
     }
@@ -442,8 +443,8 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
               onChanged: (v) => setState(() => _histeresis = v),
             ),
 
-            TextField(controller: _delayCtrl, decoration: const InputDecoration(labelText: 'Tiempo de espera (segundos)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
-            const SizedBox(height: 20),
+            // campo de tiempo de espera eliminado
+            
             
             const Text('Restaurar Seguridad', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.yellowAccent)),
             CheckboxListTile(

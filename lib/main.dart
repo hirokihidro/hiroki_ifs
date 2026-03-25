@@ -203,6 +203,19 @@ Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
   List<DeviceInfo> _devices = [];
   String? _defaultDeviceSerial;
 
+  /// Ordena `_devices` de modo que el más recientemente visto aparece primero.
+  /// Si `lastSeen` está ausente, se considera como muy antiguo.
+  void _sortDevices() {
+    _devices.sort((a, b) {
+      final da = a.lastSeen != null ? DateTime.tryParse(a.lastSeen!) : null;
+      final db = b.lastSeen != null ? DateTime.tryParse(b.lastSeen!) : null;
+      if (da == null && db == null) return 0;
+      if (da == null) return 1; // a es más antiguo
+      if (db == null) return -1;
+      return db.compareTo(da); // descendente
+    });
+  }
+
 
 
 
@@ -261,6 +274,14 @@ Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
 
   bool get _isEcoActive => _setTemp != null && _setTemp == 18.0 && _calefa == true;
 
+  // --- Shared helper for parsing boolean values from incoming data ---
+  bool _parseIncomingBool(dynamic value, {bool defaultValue = false}) {
+    if (value == null) return defaultValue;
+    final s = value.toString().trim().toLowerCase();
+    // Consider 'true', '1', '1.0', 'on' as true
+    return s == 'true' || s == '1' || s == '1.0' || s == 'on';
+  }
+
   // --- DEBOUNCE LOGIC ---
   final Map<String, DateTime> _lastInteraction = {};
   bool _shouldIgnoreUpdate(String key) {
@@ -302,23 +323,40 @@ Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
       _wasBleConnectedOnPause = _isBleConnected;
-      // Desconectar al bloquear/salir
-      if (_isConnected) {
-        _stopLocalMode();
-        _mqtt.disconnect();
-        setState(() => _isConnected = false);
-      }
     } else if (state == AppLifecycleState.resumed) {
+      // Al volver de reposo: Si BLE estaba conectado, reconectar
       if (_wasBleConnectedOnPause) {
         _quickConnectBle();
         _wasBleConnectedOnPause = false;
       }
-      // Reconectar al volver si hay un serial cargado
+      // Si hay un serial cargado, intentar reconectar (la conexión puede haberse perdido en segundo plano)
       if (_serialController.text.isNotEmpty) {
-        _connect();
+        _autoReconnectOnResume();
       }
     }
   }
+
+  /// Intenta reconectar automáticamente al volver de reposo sin pedir permiso
+  void _autoReconnectOnResume() async {
+    // Si ya está conectado, solo refrescar estado
+    if (_isConnected) {
+      if (_mqttUserPrefix != null) {
+        _mqtt.publish('$_mqttUserPrefix/appConectada', 'true');
+      }
+      if (_isBleConnected) {
+        _bleService.sendCommand('STATUS', '');
+      }
+      return;
+    }
+    
+    // Si no está conectado, intentar reconecto automático
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted && !_isConnected) {
+      _connect();
+    }
+  }
+
+
 
   Future<void> _loadSerial() async {
     final prefs = await SharedPreferences.getInstance();
@@ -331,6 +369,9 @@ Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
       final list = (jsonDecode(devicesJson) as List).cast<Map<String, dynamic>>();
       _devices = list.map((m) => DeviceInfo.fromJson(m)).toList();
     } catch (_) { _devices = []; }
+
+    // ordenar para que el último visto esté al principio
+    _sortDevices();
 
     _defaultDeviceSerial = prefs.getString(kDefaultDeviceKey);
 
@@ -379,6 +420,9 @@ Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
     } else {
       _devices.add(DeviceInfo(serial: serial, nickname: nickname, lastSeen: now, chipId: chipId));
     }
+    // después de modificar la lista, reordenar para que el más reciente quede al frente
+    _sortDevices();
+
     if (_defaultDeviceSerial == null) _defaultDeviceSerial = serial;
     await _saveDevices();
     if (mounted) setState(() {});
@@ -491,6 +535,8 @@ Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
   // ignore: unused_element
   Future<void> _deleteDevice(String serial) async {
     _devices.removeWhere((d) => d.serial == serial);
+    // resort in case order is needed elsewhere
+    _sortDevices();
     if (_defaultDeviceSerial == serial) _defaultDeviceSerial = _devices.isNotEmpty ? _devices.first.serial : null;
     await _saveDevices();
     if (mounted) setState(() {});
@@ -525,9 +571,9 @@ Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
           _currentTemp = parseDouble(data['TempActual'] ?? data['TA']) ?? _currentTemp;
           if (!_shouldIgnoreUpdate('SetTemp')) _setTemp = parseDouble(data['SetTemp'] ?? data['TS']) ?? _setTemp;
           _maxTemp = parseDouble(data['maxTemp'] ?? data['MT']) ?? _maxTemp;
-          if (!_shouldIgnoreUpdate('Calefa')) _calefa = parseBool(data['Calefa'] ?? data['AC'], _calefa);
-          if (!_shouldIgnoreUpdate('OnOff')) _jet = parseBool(data['OnOff'] ?? data['EJ'], _jet);
-          if (!_shouldIgnoreUpdate('Luces')) _luces = parseBool(data['Luces'] ?? data['EL'], _luces);
+          if (!_shouldIgnoreUpdate('Calefa')) _calefa = _parseIncomingBool(data['Calefa'] ?? data['AC'], defaultValue: _calefa);
+          if (!_shouldIgnoreUpdate('OnOff')) _jet = _parseIncomingBool(data['OnOff'] ?? data['EJ'], defaultValue: _jet);
+          if (!_shouldIgnoreUpdate('Luces')) _luces = _parseIncomingBool(data['Luces'] ?? data['EL'], defaultValue: _luces);
         });
       } else {
          if (mounted) setState(() => _isDeviceResponding = false);
@@ -541,7 +587,7 @@ Future<void> _connect() async {
   final serial = _serialController.text.trim();
   if (serial.isEmpty) return;
   
-  setState(() => _status = 'Buscando equipo...');
+  setState(() => _status = 'Buscando dispositivo...');
 
   // Intentar conexión local o MQTT
   final localUrl = await _discoveryService.discover(serial);
@@ -601,8 +647,6 @@ Future<void> _connect() async {
   Future<void> _connectFromDropdown() async {
     final serial = _serialController.text.trim();
     if (serial.isEmpty) return;
-
-    setState(() => _status = 'Buscando equipo...');
 
     // Si Bluetooth está disponible, intentamos encontrar el dispositivo por nombre (hiroki<serial>)
     final btOn = await _bleService.isBluetoothOn();
@@ -918,11 +962,8 @@ Future<void> _connect() async {
       if (!mounted) return;
       setState(() {
         double? tryDouble(dynamic v) => double.tryParse(v?.toString() ?? '');
-        bool fromOne(String? s) {
-          final v = (s ?? '').trim().toLowerCase();
-          return v == '1' || v == 'true' || v == '1.0';
-        }
-
+        // REMOVED: bool fromOne(String? s) { ... } // This was causing the error
+        
         _currentTemp = tryDouble(data['TA']) ?? _currentTemp;
         if (!_shouldIgnoreUpdate('SetTemp')) _setTemp = tryDouble(data['TS']) ?? _setTemp;
         
@@ -933,18 +974,19 @@ Future<void> _connect() async {
         }
         _maxTemp = newMaxTemp;
         
-        if (!_shouldIgnoreUpdate('Calefa')) _calefa = fromOne(data['Calefa']?.toString());
-        if (!_shouldIgnoreUpdate('OnOff')) _jet = fromOne(data['Jets']?.toString());
-        if (!_shouldIgnoreUpdate('Luces')) _luces = fromOne(data['Luces']?.toString());
+        // Using the new _parseIncomingBool method
+        if (!_shouldIgnoreUpdate('Calefa')) _calefa = _parseIncomingBool(data['Calefa'] ?? data['AC'], defaultValue: _calefa);
+        if (!_shouldIgnoreUpdate('OnOff')) _jet = _parseIncomingBool(data['OnOff'] ?? data['EJ'], defaultValue: _jet);
+        if (!_shouldIgnoreUpdate('Luces')) _luces = _parseIncomingBool(data['Luces'] ?? data['EL'], defaultValue: _luces);
         // tHys (hysteresis) optional last field
         _tHys = tryDouble(data['HYS'] ?? data['tHys'] ?? data['THYS']) ?? _tHys;
         
-        // Locks
-        if (data.containsKey('L_Temp')) _lockSetTemp = fromOne(data['L_Temp']?.toString());
-        if (data.containsKey('L_Cal')) _lockCalefa = fromOne(data['L_Cal']?.toString());
-        if (data.containsKey('L_Jets')) _lockJets = fromOne(data['L_Jets']?.toString());
-        if (data.containsKey('L_Luces')) _lockLuces = fromOne(data['L_Luces']?.toString());
-        if (data.containsKey('HasPin')) _hasPin = fromOne(data['HasPin']?.toString());
+        // Locks (using default false for locks if value is null)
+        if (data.containsKey('L_Temp')) _lockSetTemp = _parseIncomingBool(data['L_Temp']?.toString());
+        if (data.containsKey('L_Cal')) _lockCalefa = _parseIncomingBool(data['L_Cal']?.toString());
+        if (data.containsKey('L_Jets')) _lockJets = _parseIncomingBool(data['L_Jets']?.toString());
+        if (data.containsKey('L_Luces')) _lockLuces = _parseIncomingBool(data['L_Luces']?.toString());
+        if (data.containsKey('HasPin')) _hasPin = _parseIncomingBool(data['HasPin']?.toString());
 
         // mark device as responding
         _isDeviceResponding = true;
@@ -1018,24 +1060,18 @@ Future<void> _connect() async {
         if (val != null && val > 0) _setTemp = val;
       }
       
-      bool isTrue(String val) {
-        final v = val.trim().toLowerCase();
-        return v == 'true' || v == '1' || v == 'on';
-      }
+      // REMOVED: bool isTrue(String val) { ... }
+      
+      if (topic.contains('Calefa') && !_shouldIgnoreUpdate('Calefa')) _calefa = _parseIncomingBool(payload);
+      if (topic.contains('OnOff') && !_shouldIgnoreUpdate('OnOff')) _jet = _parseIncomingBool(payload);
+      if (topic.contains('Luces') && !_shouldIgnoreUpdate('Luces')) _luces = _parseIncomingBool(payload);
 
-      if (topic.contains('Calefa') && !_shouldIgnoreUpdate('Calefa')) _calefa = isTrue(payload);
-      if (topic.contains('OnOff') && !_shouldIgnoreUpdate('OnOff')) _jet = isTrue(payload);
-      if (topic.contains('Luces') && !_shouldIgnoreUpdate('Luces')) _luces = isTrue(payload);
-
-      // Locks via MQTT
-      if (topic.contains('locks/SetTemp')) _lockSetTemp = isTrue(payload);
-      if (topic.contains('locks/Calefa')) _lockCalefa = isTrue(payload);
-      if (topic.contains('locks/OnOff')) _lockJets = isTrue(payload);
-      if (topic.contains('locks/Luces')) _lockLuces = isTrue(payload);
-
-      // mark device as responding
-      _isDeviceResponding = true;
-      _cancelConnectionWatchdog();
+      if (topic.contains('locks/SetTemp')) _lockSetTemp = _parseIncomingBool(payload);
+      if (topic.contains('locks/Calefa')) _lockCalefa = _parseIncomingBool(payload);
+      if (topic.contains('locks/OnOff')) _lockJets = _parseIncomingBool(payload);
+      if (topic.contains('locks/Luces')) _lockLuces = _parseIncomingBool(payload);
+      if (topic.contains('HasPin')) _hasPin = _parseIncomingBool(payload);
+      if (topic.contains('SESSION_CODE')) _sessionCode = payload;
     });
   }
 
@@ -1336,7 +1372,11 @@ Future<void> _connect() async {
       _sendLocalCommand(_mqttToLocalKeyMap['SetTemp']!, payload);
     } else if (_mqtt.isConnected) {
       // Publicar solo en el canal estándar 'app/SetTemp/value/set'
-      _mqtt.publish('$_mqttUserPrefix/app/SetTemp/value/set', payload);
+            final topic = _mqttTopicForCommand('SetTemp');
+      if (topic.isNotEmpty) {
+        debugPrint('MQTT publish -> $topic : $payload (session ${_sessionCode == null ? "missing" : "present"})');
+        _mqtt.publish(topic, payload);
+      }
     }
   }
 
@@ -1376,7 +1416,11 @@ Future<void> _connect() async {
       _sendLocalCommand(_mqttToLocalKeyMap[key]!, finalMqtt);
     } else if (_mqtt.isConnected) {
       // Publicar solo en el canal estándar 'app/.../value/set'
-      _mqtt.publish('$_mqttUserPrefix/app/$key/value/set', finalMqtt);
+            final topic = _mqttTopicForCommand(key);
+      if (topic.isNotEmpty) {
+        debugPrint('MQTT publish -> $topic : $finalMqtt (session ${_sessionCode == null ? "missing" : "present"})');
+        _mqtt.publish(topic, finalMqtt);
+      }
     }
     
     // Actualizar UI optimista
@@ -1460,19 +1504,19 @@ Future<void> _connect() async {
 
         if (topic.contains('TempActual')) _currentTemp = double.tryParse(payload);
         if (topic.contains('maxTemp')) _maxTemp = double.tryParse(payload)?? _maxTemp;
-        if (topic.contains('SetTemp') && !_shouldIgnoreUpdate('SetTemp')) {
+        if (topic.contains('SetTemp') && !topic.contains('locks') && !_shouldIgnoreUpdate('SetTemp')) {
           final val = double.tryParse(payload);
           if (val != null && val > 0) _setTemp = val;
         }
-        if (topic.contains('Calefa') && !_shouldIgnoreUpdate('Calefa')) _calefa = (payload == 'true');
-        if (topic.contains('OnOff') && !_shouldIgnoreUpdate('OnOff')) _jet = (payload == 'true');
-        if (topic.contains('Luces') && !_shouldIgnoreUpdate('Luces')) _luces = (payload == 'true');
+        if (topic.contains('Calefa') && !topic.contains('locks') && !_shouldIgnoreUpdate('Calefa')) _calefa = _parseIncomingBool(payload);
+        if (topic.contains('OnOff') && !topic.contains('locks') && !_shouldIgnoreUpdate('OnOff')) _jet = _parseIncomingBool(payload);
+        if (topic.contains('Luces') && !topic.contains('locks') && !_shouldIgnoreUpdate('Luces')) _luces = _parseIncomingBool(payload);
 
-        if (topic.contains('locks/SetTemp')) _lockSetTemp = (payload == '1');
-        if (topic.contains('locks/Calefa')) _lockCalefa = (payload == '1');
-        if (topic.contains('locks/OnOff')) _lockJets = (payload == '1');
-        if (topic.contains('locks/Luces')) _lockLuces = (payload == '1');
-        if (topic.contains('HasPin')) _hasPin = (payload == '1');
+        if (topic.contains('locks/SetTemp')) _lockSetTemp = _parseIncomingBool(payload);
+        if (topic.contains('locks/Calefa')) _lockCalefa = _parseIncomingBool(payload);
+        if (topic.contains('locks/OnOff')) _lockJets = _parseIncomingBool(payload);
+        if (topic.contains('locks/Luces')) _lockLuces = _parseIncomingBool(payload);
+        if (topic.contains('HasPin')) _hasPin = _parseIncomingBool(payload);
         if (topic.contains('SESSION_CODE')) _sessionCode = payload;
       });
     });
@@ -1725,6 +1769,17 @@ Future<void> _connect() async {
                 },
                 tooltip: 'Equipos Guardados',
               ),
+              // Añadido: Mostrar el nombre del dispositivo actual
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: Text(
+                  _devices.firstWhere(
+                    (d) => d.serial == _serialController.text,
+                    orElse: () => DeviceInfo(serial: 'NO_DEVICE', nickname: 'Seleccionar Equipo')
+                  ).displayName(),
+                  style: const TextStyle(color: Colors.white60, fontSize: 16),
+                ),
+              ),
             ],
           ),
           Column(
@@ -1764,6 +1819,8 @@ Future<void> _connect() async {
   }
 
   Widget _buildTemperatureCard() {
+    final bool hasSensorError = _currentTemp == -99.0;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 35),
@@ -1807,13 +1864,21 @@ Future<void> _connect() async {
               ),
               // El punto indicador del progreso (opcional para estética)
               Text(
-                _currentTemp == null ? '--' : '${_currentTemp!.toInt()}°',
-                style: const TextStyle(fontSize: 56, fontWeight: FontWeight.w200),
+                _currentTemp == null
+                    ? '--'
+                    : (hasSensorError ? '' : '${_currentTemp!.toInt()}°'),
+                style: TextStyle(
+                  fontSize: 56,
+                  fontWeight: FontWeight.w200,
+                  color: hasSensorError ? Colors.redAccent : Colors.white,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 15),
-          const Text('Temperatura actual', style: TextStyle(color: Colors.white60, fontSize: 16)),
+          hasSensorError
+              ? const Text('error en el sensor de temperatura', style: TextStyle(color: Colors.redAccent, fontSize: 16))
+              : const Text('Temperatura actual', style: TextStyle(color: Colors.white60, fontSize: 16)),
         ],
       ),
     );
@@ -1871,6 +1936,7 @@ Future<void> _connect() async {
         borderRadius: BorderRadius.circular(28),
       ),
       padding: const EdgeInsets.symmetric(vertical: 20),
+
       child: Column(
         children: [
           Icon(isLocked ? Icons.lock : Icons.thermostat_outlined, color: isLocked ? Colors.redAccent : Colors.white),
@@ -1905,6 +1971,8 @@ Future<void> _connect() async {
   }
 
   Widget _buildActionGrid({bool isLandscape = false}) {
+    final bool _hasSensorError = _currentTemp == -99.0; // Determinar si hay error en el sensor
+
     return LayoutBuilder(
       builder: (context, constraints) {
         // Calculamos el ancho de cada item dinámicamente
@@ -1924,16 +1992,30 @@ Future<void> _connect() async {
             _buildActionItem('Jets', LucideIcons.waves, _jet, _lockJets, (v) { // Changed Icon to LucideIcons.waves
                _toggleAndPublish('OnOff', v);
             }, itemWidth),
-            _buildActionItem('Calefacción', LucideIcons.thermometer, _calefa, _lockCalefa, (v) { // Changed Icon to LucideIcons.thermometer
-               _toggleAndPublish('Calefa', v);
+            // Modificación para el botón de Calefacción: bloqueado si hay error en el sensor
+            _buildActionItem('Calefacción', LucideIcons.thermometer, _calefa, _lockCalefa || _hasSensorError, (v) { // Changed Icon to LucideIcons.thermometer
+               if (!_hasSensorError) { // Solo permitir si no hay error de sensor
+                 _toggleAndPublish('Calefa', v);
+               } else {
+                 ScaffoldMessenger.of(context).showSnackBar(
+                   const SnackBar(content: Text('No se puede controlar la calefacción con sensor de temperatura erróneo.'))
+                 );
+               }
             }, itemWidth),
             _buildActionItem('Luces', LucideIcons.lightbulb, _luces, _lockLuces, (v) { // Changed Icon to LucideIcons.lightbulb
                _toggleAndPublish('Luces', v);
             }, itemWidth),
+            // Modificación para Modo Eco: No permitir si hay error en el sensor
             _buildActionItem('Modo Eco', LucideIcons.leaf, _isEcoActive, false, (v) { // Changed Icon to LucideIcons.leaf
               if(v) {
-                setState(() { _setTemp = 18.0; _calefa = true; });
-                _publishSetTemp(18.0); _toggleAndPublish('Calefa', true);
+                if (!_hasSensorError) { // Solo permitir si no hay error de sensor
+                  setState(() { _setTemp = 18.0; _calefa = true; });
+                  _publishSetTemp(18.0); _toggleAndPublish('Calefa', true);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('No se puede activar Modo Eco con sensor de temperatura erróneo.'))
+                  );
+                }
               }
             }, itemWidth),
           ],
@@ -1942,7 +2024,7 @@ Future<void> _connect() async {
     );
   }
 
-  Widget _buildActionItem(String label, IconData icon, bool active, bool isLocked, Function(bool) onChanged, double width) {
+  Widget _buildActionItem(String label, IconData icon, bool active, bool isLocked, Function(bool)? onChanged, double width) {
     // Si está bloqueado, usamos un color grisáceo y cambiamos el icono si se desea
     final color = isLocked ? Colors.grey : (active ? Colors.yellow : Colors.white);
     
@@ -1969,6 +2051,9 @@ Future<void> _connect() async {
             scale: 0.8,
             child: Switch(
               value: active,
+              // MODIFICACIÓN: Siempre permite la interacción. La función onChanged
+              // (que llama a _toggleAndPublish) manejará la lógica del PIN
+              // y la posible reversión visual si el PIN es incorrecto o cancelado.
               onChanged: onChanged,
               activeColor: Colors.white,
               activeTrackColor: const Color.fromARGB(255, 231, 219, 115),
@@ -1990,7 +2075,9 @@ Future<void> _connect() async {
   }
 
   Widget _buildFooterLinks() {
-    final hasSessionCode = _sessionCode != null && _sessionCode!.isNotEmpty;
+    //final hasSessionCode = _sessionCode != null && _sessionCode!.isNotEmpty;
+    final isBleConnected = _bleService.isConnected; // O la variable que uses para rastrear el estado BLE
+    final hasSessionCode = (_sessionCode != null && _sessionCode!.isNotEmpty) || isBleConnected;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -2044,7 +2131,13 @@ Future<void> _connect() async {
       ],
     );
   }
-
+String _mqttTopicForCommand(String key) {
+  if (_mqttUserPrefix == null || _mqttUserPrefix!.isEmpty) return '';
+  if (_sessionCode == null || _sessionCode!.isEmpty) {
+    return '$_mqttUserPrefix/devices/$key/set';
+  }
+  return '$_mqttUserPrefix/app/$key/value/set';
+}
   Future<void> _handleConfigChangeAndReconnect() async {
     if (!mounted) return;
     
@@ -2182,7 +2275,8 @@ class _SecurityPageState extends State<SecurityPage> {
        try {
          // Codificar payload para URL
          final url = '${widget.localBaseUrl}/security_config?data=${Uri.encodeComponent(jsonPayload)}';
-         await http.get(Uri.parse(url)).timeout(const Duration(seconds:   3));
+         // quitamos el timeout para no fallar temprano en conexiones lentas
+         await http.get(Uri.parse(url));
          sent = true;
        } catch (_) {}
     }
@@ -2265,7 +2359,7 @@ class _SecurityPageState extends State<SecurityPage> {
               const SizedBox(height: 10),
               TextField(
                 controller: _oldPinController,
-                decoration: const InputDecoration(labelText: 'Clave Actual / Maestra', border: OutlineInputBorder(), counterText: ""),
+                decoration: const InputDecoration(labelText: 'Clave Actual / Maestra', border: OutlineInputBorder()),
                 maxLength: 6,
                 textCapitalization: TextCapitalization.characters,
               ),
@@ -2275,7 +2369,7 @@ class _SecurityPageState extends State<SecurityPage> {
             const SizedBox(height: 10),
             TextField(
               controller: _newPinController,
-              decoration: const InputDecoration(labelText: 'Nueva Clave (Opcional)', border: OutlineInputBorder(), counterText: ""),
+              decoration: const InputDecoration(labelText: 'Nueva Clave (Opcional)', border: OutlineInputBorder()),
               maxLength: 6,
               textCapitalization: TextCapitalization.characters,
             ),
@@ -2360,7 +2454,7 @@ class MasterConfigPage extends StatefulWidget {
 class _MasterConfigPageState extends State<MasterConfigPage> {
   final _brokerCtrl = TextEditingController();
   final _portCtrl = TextEditingController();
-  final _delayCtrl = TextEditingController();
+  // el controlador de retraso ya no es necesario
   final _oldPinController = TextEditingController();
 
   double _maxTemp = 40;
@@ -2374,14 +2468,14 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
     // Valores por defecto (idealmente se cargarían del dispositivo si hubiera un comando GET)
     _brokerCtrl.text = "hiroki.servidoraweb.net";
     _portCtrl.text = "8883";
-    _delayCtrl.text = "60";
+    // _delayCtrl removed, default delay no longer editable
   }
 
   @override
   void dispose() {
     _brokerCtrl.dispose();
     _portCtrl.dispose();
-    _delayCtrl.dispose();
+    // _delayCtrl removed
     _oldPinController.dispose();
     super.dispose();
   }
@@ -2400,7 +2494,7 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
     final config = {
       "maxTemp": _maxTemp.toInt(), // Convert to integer
       "histeresis": _histeresis.toInt(), // Convert to integer
-      "delayCheck": int.tryParse(_delayCtrl.text) ?? 60,
+      // delayCheck removed, firmware will use default or previous value
       "broker": _brokerCtrl.text.trim(),
       "port": int.tryParse(_portCtrl.text) ?? 8883,
       "resetPin": _resetPin,
@@ -2489,8 +2583,8 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
               onChanged: (v) => setState(() => _histeresis = v),
             ),
 
-            TextField(controller: _delayCtrl, decoration: const InputDecoration(labelText: 'Tiempo de espera (segundos)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
-            const SizedBox(height: 20),
+            // campo de tiempo de espera eliminado
+            
             
             const Text('Restaurar Seguridad', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.yellowAccent)),
             CheckboxListTile(
