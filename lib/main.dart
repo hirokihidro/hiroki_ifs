@@ -337,24 +337,29 @@ Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
   }
 
   /// Intenta reconectar automáticamente al volver de reposo sin pedir permiso
-  void _autoReconnectOnResume() async {
-    // Si ya está conectado, solo refrescar estado
-    if (_isConnected) {
-      if (_mqttUserPrefix != null) {
-        _mqtt.publish('$_mqttUserPrefix/appConectada', 'true');
-      }
-      if (_isBleConnected) {
-        _bleService.sendCommand('STATUS', '');
-      }
-      return;
-    }
-    
-    // Si no está conectado, intentar reconecto automático
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (mounted && !_isConnected) {
-      _connect();
+void _autoReconnectOnResume() async {
+  // Si estamos en modo MQTT, verificar activamente si el cliente sigue conectado
+  if (!_isBleConnected && !_isLocalAvailable) {
+    if (!_mqtt.isConnected) {
+      _isConnected = false; 
     }
   }
+
+  if (_isConnected) {
+    // Si crees que estás conectado, envía un ping o mensaje de "estoy aquí"
+    if (_mqttUserPrefix != null) {
+      _mqtt.publish('$_mqttUserPrefix/appConectada', 'true');
+    }
+    // ... resto de tu lógica
+    return;
+  }
+  
+  // Si se detectó desconexión real, reconectar
+  await Future.delayed(const Duration(milliseconds: 500));
+  if (mounted && !_isConnected) {
+    _connect();
+  }
+}
 
 
 
@@ -1431,6 +1436,25 @@ Future<void> _connect() async {
     });
   }
 
+  void _handleButtonPress(String key, bool value) {
+    if (!_isConnected && !_isBleConnected && !_isLocalAvailable) {
+      // Si no hay ninguna conexión activa, intentamos reconectar
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reconectando...'), duration: Duration(seconds: 1)),
+      );
+
+      _connect().then((_) {
+        if (_isConnected || _isBleConnected || _isLocalAvailable) {
+          _toggleAndPublish(key, value);
+        }
+      });
+      return;
+    }
+
+    // Si ya estamos conectados por cualquier medio, enviamos la acción
+    _toggleAndPublish(key, value);
+  }
+
   Future<bool> _checkOrRequestPin() async {
     if (_sessionPin != null && _sessionPin!.isNotEmpty) return true;
     
@@ -1990,12 +2014,12 @@ Future<void> _connect() async {
           alignment: WrapAlignment.center,
           children: [
             _buildActionItem('Jets', LucideIcons.waves, _jet, _lockJets, (v) { // Changed Icon to LucideIcons.waves
-               _toggleAndPublish('OnOff', v);
+               _handleButtonPress('OnOff', v);
             }, itemWidth),
             // Modificación para el botón de Calefacción: bloqueado si hay error en el sensor
             _buildActionItem('Calefacción', LucideIcons.thermometer, _calefa, _lockCalefa || _hasSensorError, (v) { // Changed Icon to LucideIcons.thermometer
                if (!_hasSensorError) { // Solo permitir si no hay error de sensor
-                 _toggleAndPublish('Calefa', v);
+                 _handleButtonPress('Calefa', v);
                } else {
                  ScaffoldMessenger.of(context).showSnackBar(
                    const SnackBar(content: Text('No se puede controlar la calefacción con sensor de temperatura erróneo.'))
@@ -2003,7 +2027,7 @@ Future<void> _connect() async {
                }
             }, itemWidth),
             _buildActionItem('Luces', LucideIcons.lightbulb, _luces, _lockLuces, (v) { // Changed Icon to LucideIcons.lightbulb
-               _toggleAndPublish('Luces', v);
+               _handleButtonPress('Luces', v);
             }, itemWidth),
             // Modificación para Modo Eco: No permitir si hay error en el sensor
             _buildActionItem('Modo Eco', LucideIcons.leaf, _isEcoActive, false, (v) { // Changed Icon to LucideIcons.leaf
