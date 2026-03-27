@@ -24,7 +24,7 @@ jobs:
         run: flutter build ipa --no-codesign # Genera el archivo sin firma (para pruebas rápidas)
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # <--- Cambia de v3 a v4
         with:
           name: ios-ipa
           path: build/ios/ipa/*.ipa
