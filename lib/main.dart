@@ -27,7 +27,20 @@ import 'devices_page.dart';
 // SharedPreferences keys (public)
 const String kDevicesKey = 'known_devices';
 const String kDefaultDeviceKey = 'default_device_serial';
+const String kMaxTempKey = 'max_temp';
+const String kHysteresisKey = 'hysteresis';
 
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final upperText = newValue.text.toUpperCase();
+    return TextEditingValue(
+      text: upperText,
+      selection: newValue.selection,
+      composing: TextRange.empty,
+    );
+  }
+}
 
 void main() {
   runApp(Phoenix(child: MyApp()));
@@ -38,7 +51,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Control de SPA',
+      title: 'Control de Hiroki',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark, // Configura el tema oscuro por defecto
@@ -386,6 +399,18 @@ void _autoReconnectOnResume() async {
       if (d.serial.isNotEmpty) _serialController.text = d.serial;
     }
 
+    // Leer maxTemp almacenado y usarlo como valor inicial si existe
+    final savedMaxTemp = prefs.getDouble(kMaxTempKey);
+    if (savedMaxTemp != null && savedMaxTemp > 0) {
+      _maxTemp = savedMaxTemp;
+    }
+
+    // Leer histeresis almacenada y usarla de inicio si existe
+    final savedHysteresis = prefs.getDouble(kHysteresisKey);
+    if (savedHysteresis != null && savedHysteresis > 0) {
+      _tHys = savedHysteresis;
+    }
+
     // Cargar dispositivo BLE guardado para conexión rápida
     _lastBleDeviceId = prefs.getString('last_ble_device_id');
     _lastBleDeviceName = prefs.getString('last_ble_device_name');
@@ -409,6 +434,16 @@ void _autoReconnectOnResume() async {
     final jsonList = _devices.map((d) => d.toJson()).toList();
     await prefs.setString(kDevicesKey, jsonEncode(jsonList));
     if (_defaultDeviceSerial != null) await prefs.setString(kDefaultDeviceKey, _defaultDeviceSerial!);
+  }
+
+  Future<void> _saveMaxTemp(double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(kMaxTempKey, value);
+  }
+
+  Future<void> _saveHysteresis(double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(kHysteresisKey, value);
   }
 
   // ignore: unused_element
@@ -575,7 +610,16 @@ void _autoReconnectOnResume() async {
 
           _currentTemp = parseDouble(data['TempActual'] ?? data['TA']) ?? _currentTemp;
           if (!_shouldIgnoreUpdate('SetTemp')) _setTemp = parseDouble(data['SetTemp'] ?? data['TS']) ?? _setTemp;
-          _maxTemp = parseDouble(data['maxTemp'] ?? data['MT']) ?? _maxTemp;
+          final localMaxTemp = parseDouble(data['maxTemp'] ?? data['MT']);
+          if (localMaxTemp != null) {
+            _maxTemp = localMaxTemp;
+            _saveMaxTemp(localMaxTemp);
+          }
+          final localHys = parseDouble(data['HYS'] ?? data['tHys'] ?? data['THYS']);
+          if (localHys != null) {
+            _tHys = localHys;
+            _saveHysteresis(localHys);
+          }
           if (!_shouldIgnoreUpdate('Calefa')) _calefa = _parseIncomingBool(data['Calefa'] ?? data['AC'], defaultValue: _calefa);
           if (!_shouldIgnoreUpdate('OnOff')) _jet = _parseIncomingBool(data['OnOff'] ?? data['EJ'], defaultValue: _jet);
           if (!_shouldIgnoreUpdate('Luces')) _luces = _parseIncomingBool(data['Luces'] ?? data['EL'], defaultValue: _luces);
@@ -984,7 +1028,11 @@ Future<void> _connect() async {
         if (!_shouldIgnoreUpdate('OnOff')) _jet = _parseIncomingBool(data['OnOff'] ?? data['EJ'], defaultValue: _jet);
         if (!_shouldIgnoreUpdate('Luces')) _luces = _parseIncomingBool(data['Luces'] ?? data['EL'], defaultValue: _luces);
         // tHys (hysteresis) optional last field
-        _tHys = tryDouble(data['HYS'] ?? data['tHys'] ?? data['THYS']) ?? _tHys;
+        final double? newHys = tryDouble(data['HYS'] ?? data['tHys'] ?? data['THYS']);
+        if (newHys != null) {
+          _tHys = newHys;
+          _saveHysteresis(newHys);
+        }
         
         // Locks (using default false for locks if value is null)
         if (data.containsKey('L_Temp')) _lockSetTemp = _parseIncomingBool(data['L_Temp']?.toString());
@@ -1058,6 +1106,7 @@ Future<void> _connect() async {
           _setTemp = newMaxTemp;
         }
         _maxTemp = newMaxTemp;
+        _saveMaxTemp(newMaxTemp);
       }
       
       if (topic.contains('SetTemp') && !_shouldIgnoreUpdate('SetTemp')) {
@@ -1504,7 +1553,7 @@ Future<void> _connect() async {
 
   void _subscribeAll() {
     if (_mqttUserPrefix == null) return;
-    for (var t in ['TempActual', 'SetTemp', 'maxTemp', 'Calefa', 'OnOff', 'Luces', 'SESSION_CODE']) {
+    for (var t in ['TempActual', 'SetTemp', 'maxTemp', 'HYS', 'Calefa', 'OnOff', 'Luces', 'SESSION_CODE']) {
       _mqtt.subscribe('$_mqttUserPrefix/app/$t/value/set');
       // Suscribirse también al estado (value) para recibir actualizaciones del dispositivo (ej: Temperatura)
       _mqtt.subscribe('$_mqttUserPrefix/app/$t/value');
@@ -1527,7 +1576,20 @@ Future<void> _connect() async {
         _cancelConnectionWatchdog();
 
         if (topic.contains('TempActual')) _currentTemp = double.tryParse(payload);
-        if (topic.contains('maxTemp')) _maxTemp = double.tryParse(payload)?? _maxTemp;
+        if (topic.contains('maxTemp')) {
+          final value = double.tryParse(payload);
+          if (value != null) {
+            _maxTemp = value;
+            _saveMaxTemp(value);
+          }
+        }
+        if (topic.contains('HYS') || topic.contains('hysteresis')) {
+          final value = double.tryParse(payload);
+          if (value != null) {
+            _tHys = value;
+            _saveHysteresis(value);
+          }
+        }
         if (topic.contains('SetTemp') && !topic.contains('locks') && !_shouldIgnoreUpdate('SetTemp')) {
           final val = double.tryParse(payload);
           if (val != null && val > 0) _setTemp = val;
@@ -1667,12 +1729,6 @@ Future<void> _connect() async {
               ),
             ),
 
-            const SizedBox(height: 10),
-            Text(_status, style: const TextStyle(color: Colors.white70)),
-            if (_status != 'Desconectado') ...[
-              const SizedBox(height: 10),
-              const CircularProgressIndicator(),
-            ],
           ],
         ),
       ),
@@ -2339,6 +2395,8 @@ class _SecurityPageState extends State<SecurityPage> {
               controller: _masterKeyController,
               decoration: const InputDecoration(labelText: 'Clave Maestra (6 dígitos)', border: OutlineInputBorder()),
               keyboardType: TextInputType.text,
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: [UpperCaseTextFormatter()],
               obscureText: true,
               maxLength: 6,
             ),
@@ -2356,12 +2414,16 @@ class _SecurityPageState extends State<SecurityPage> {
     );
 
     if (sessionCode != null && masterKey != null && masterKey == generateMasterKey(sessionCode)) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => MasterConfigPage(
+      final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => MasterConfigPage(
         bleService: widget.bleService,
         hasPin: widget.hasPin,
         localBaseUrl: widget.localBaseUrl,
         onMqttSend: widget.onMqttSend,
       )));
+
+      if (result == 'RECONNECT') {
+        if (mounted) Navigator.pop(context, 'RECONNECT');
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Clave maestra incorrecta.')));
     }
@@ -2481,8 +2543,8 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
   // el controlador de retraso ya no es necesario
   final _oldPinController = TextEditingController();
 
-  double _maxTemp = 40;
-  double _histeresis = 2;
+  double _maxTemp = 42;
+  double _histeresis = 3;
   bool _isSaving = false;
   bool _resetPin = false;
 
@@ -2493,6 +2555,15 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
     _brokerCtrl.text = "hiroki.servidoraweb.net";
     _portCtrl.text = "8883";
     // _delayCtrl removed, default delay no longer editable
+    _loadSavedHysteresis();
+  }
+
+  Future<void> _loadSavedHysteresis() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedHys = prefs.getDouble(kHysteresisKey);
+    if (savedHys != null && mounted) {
+      setState(() => _histeresis = savedHys);
+    }
   }
 
   @override
@@ -2551,10 +2622,19 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
        } catch (_) {}
     }
 
+    if (sent) {
+      // Guardamos localmente el valor aplicado también en preferencias
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(kHysteresisKey, _histeresis);
+    }
+
     setState(() => _isSaving = false);
 
     if (sent) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Configuración Maestra enviada. El equipo se reiniciará.')));
+      // Espera de sincronización antes de volver al panel principal.
+      await Future.delayed(const Duration(seconds: 10));
+      if (!mounted) return;
       Navigator.pop(context, 'RECONNECT'); // Added 'RECONNECT' as return value
     } else {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: No hay conexión para guardar.')));
