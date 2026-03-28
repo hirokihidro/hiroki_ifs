@@ -1102,10 +1102,11 @@ Future<void> _connect() async {
       // FIX: Ensure maxTemp is updated and setTemp is clamped to it
       if (topic.contains('maxTemp')) {
         final double newMaxTemp = double.tryParse(payload) ?? _maxTemp;
-        if (newMaxTemp < (_setTemp ?? 0)) {
-          _setTemp = newMaxTemp;
-        }
         _maxTemp = newMaxTemp;
+        // Clamp setTemp to the new maxTemp
+        if (_setTemp != null) {
+          _setTemp = _setTemp!.clamp(10, _maxTemp);
+        }
         _saveMaxTemp(newMaxTemp);
       }
       
@@ -1580,6 +1581,10 @@ Future<void> _connect() async {
           final value = double.tryParse(payload);
           if (value != null) {
             _maxTemp = value;
+            // Clamp setTemp to the new maxTemp
+            if (_setTemp != null) {
+              _setTemp = _setTemp!.clamp(10, _maxTemp);
+            }
             _saveMaxTemp(value);
           }
         }
