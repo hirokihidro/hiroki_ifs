@@ -426,7 +426,7 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
             Text('Temperatura Máxima: ${_maxTemp.toInt()}°C', style: const TextStyle(color: Colors.white70)),
             Slider(
               value: _maxTemp,
-              min: 20, max: 45, 
+              min: 20, max: 45,
               divisions: 25,
               label: _maxTemp.toInt().toString(),
               activeColor: Colors.yellowAccent,

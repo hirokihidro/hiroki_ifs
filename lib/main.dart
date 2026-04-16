@@ -254,7 +254,7 @@ Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
 
   double? _currentTemp;
   double? _setTemp;
-  double _maxTemp = 40;
+  double _maxTemp = 45;
   bool _calefa = false;
   bool _jet = false;
   bool _luces = false;
@@ -277,6 +277,7 @@ Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
   bool get debugCalefa => _calefa;
   double? _tHys;
   double? get debugTHys => _tHys;
+  bool _isWaitingForData = false;
   String? _lastBleDeviceId;
   String? _lastBleDeviceName;
   bool _wasBleConnectedOnPause = false;
@@ -286,6 +287,26 @@ Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
   final String _logoUrl = "https://res.cloudinary.com/dhmxtqdsb/image/upload/v1764783911/Hrioki_Blanco_yjpn3z.png";
 
   bool get _isEcoActive => _setTemp != null && _setTemp == 18.0 && _calefa == true;
+
+  double get _effectiveMaxTemp => _maxTemp > 0 ? _maxTemp : 45;
+
+  void _resetDeviceState() {
+    _currentTemp = null;
+    _maxTemp = 40;
+    _setTemp = null;
+    _calefa = false;
+    _jet = false;
+    _luces = false;
+    _tHys = null;
+    _lockSetTemp = false;
+    _lockCalefa = false;
+    _lockJets = false;
+    _lockLuces = false;
+    _hasPin = false;
+    _sessionPin = null;
+    _sessionCode = null;
+    _isDeviceResponding = false;
+  }
 
   // --- Shared helper for parsing boolean values from incoming data ---
   bool _parseIncomingBool(dynamic value, {bool defaultValue = false}) {
@@ -378,8 +399,7 @@ void _autoReconnectOnResume() async {
 
   Future<void> _loadSerial() async {
     final prefs = await SharedPreferences.getInstance();
-    final serial = prefs.getString('serial') ?? '';
-    _serialController.text = serial;
+    // No cargamos el serial guardado en prefs: la app espera datos nuevos del equipo.
 
     // Cargar dispositivos conocidos y device por defecto
     final devicesJson = prefs.getString(kDevicesKey) ?? '[]';
@@ -393,11 +413,7 @@ void _autoReconnectOnResume() async {
 
     _defaultDeviceSerial = prefs.getString(kDefaultDeviceKey);
 
-    // Si tenemos default, prefijar el serial
-    if (_defaultDeviceSerial != null && _defaultDeviceSerial!.isNotEmpty) {
-      final d = _devices.firstWhere((x) => x.serial == _defaultDeviceSerial, orElse: () => _devices.isNotEmpty ? _devices.first : DeviceInfo(serial: ''));
-      if (d.serial.isNotEmpty) _serialController.text = d.serial;
-    }
+    // No preseleccionamos el serial por defecto aquí; siempre esperamos datos nuevos del equipo.
 
     // Leer maxTemp almacenado y usarlo como valor inicial si existe
     final savedMaxTemp = prefs.getDouble(kMaxTempKey);
@@ -414,6 +430,11 @@ void _autoReconnectOnResume() async {
     // Cargar dispositivo BLE guardado para conexión rápida
     _lastBleDeviceId = prefs.getString('last_ble_device_id');
     _lastBleDeviceName = prefs.getString('last_ble_device_name');
+
+    // Pre-llenar el campo de serial con el último dispositivo usado
+    if (_defaultDeviceSerial != null && _defaultDeviceSerial!.isNotEmpty) {
+      _serialController.text = _defaultDeviceSerial!;
+    }
   }
 
   Future<void> _loadLastBleDevice() async {
@@ -463,7 +484,7 @@ void _autoReconnectOnResume() async {
     // después de modificar la lista, reordenar para que el más reciente quede al frente
     _sortDevices();
 
-    if (_defaultDeviceSerial == null) _defaultDeviceSerial = serial;
+    _defaultDeviceSerial = serial;
     await _saveDevices();
     if (mounted) setState(() {});
   }
@@ -499,7 +520,6 @@ void _autoReconnectOnResume() async {
                   devices.add(DeviceInfo(serial: found, lastSeen: now, chipId: found));
                 }
                 await prefs.setString(kDevicesKey, jsonEncode(devices.map((d) => d.toJson()).toList()));
-                await prefs.setString('serial', found); // Save the found serial
                 // Auto-select and attempt connection
                 if (mounted) {
                   try {
@@ -543,7 +563,6 @@ void _autoReconnectOnResume() async {
                   devices.add(DeviceInfo(serial: found, lastSeen: now, chipId: found));
                 }
                 await prefs.setString(kDevicesKey, jsonEncode(devices.map((d) => d.toJson()).toList()));
-                await prefs.setString('serial', found); // Save the found serial
                 // Auto-select and attempt connection
                 if (mounted) {
                   try {
@@ -609,12 +628,15 @@ void _autoReconnectOnResume() async {
           }
 
           _currentTemp = parseDouble(data['TempActual'] ?? data['TA']) ?? _currentTemp;
-          if (!_shouldIgnoreUpdate('SetTemp')) _setTemp = parseDouble(data['SetTemp'] ?? data['TS']) ?? _setTemp;
+          
+          // Handle maxTemp first
           final localMaxTemp = parseDouble(data['maxTemp'] ?? data['MT']);
           if (localMaxTemp != null) {
             _maxTemp = localMaxTemp;
             _saveMaxTemp(localMaxTemp);
           }
+          
+          if (!_shouldIgnoreUpdate('SetTemp')) _setTemp = parseDouble(data['SetTemp'] ?? data['TS']) ?? _setTemp;
           final localHys = parseDouble(data['HYS'] ?? data['tHys'] ?? data['THYS']);
           if (localHys != null) {
             _tHys = localHys;
@@ -636,7 +658,9 @@ Future<void> _connect() async {
   final serial = _serialController.text.trim();
   if (serial.isEmpty) return;
   
+  _resetDeviceState();
   setState(() => _status = 'Buscando dispositivo...');
+  _isWaitingForData = true;
 
   // Intentar conexión local o MQTT
   final localUrl = await _discoveryService.discover(serial);
@@ -654,14 +678,13 @@ Future<void> _connect() async {
   } 
 
   if (isConnectedNow) {
-    // LLAMADA CLAVE: Agregamos o actualizamos en la lista de guardados
+    // Agregamos o actualizamos el dispositivo conocido, pero no guardamos el serial actual en prefs.
     await _addOrUpdateDevice(serial); 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('serial', serial);
   }
-}
+} 
 
   Future<void> _connectMqtt(String serial, {bool isFallback = false}) async {
+    _resetDeviceState();
     if (!isFallback) setState(() => _status = 'Conectando Nube...');
     final ok = await _mqtt.connect(serial);
     if (ok) {
@@ -893,7 +916,9 @@ Future<void> _connect() async {
   }
 
   Future<void> _connectBle(BluetoothDevice device) async {
+    _resetDeviceState();
     setState(() => _status = 'Conectando Bluetooth...');
+    _isWaitingForData = true;
     final success = await _bleService.connect(device);
     
     if (success) {
@@ -1014,14 +1039,12 @@ Future<void> _connect() async {
         // REMOVED: bool fromOne(String? s) { ... } // This was causing the error
         
         _currentTemp = tryDouble(data['TA']) ?? _currentTemp;
-        if (!_shouldIgnoreUpdate('SetTemp')) _setTemp = tryDouble(data['TS']) ?? _setTemp;
         
-        // FIX: Ensure maxTemp is updated and setTemp is clamped to it
+        // FIX: Ensure maxTemp is updated first, then setTemp is clamped to it
         final double newMaxTemp = tryDouble(data['MT']) ?? _maxTemp;
-        if (newMaxTemp < (_setTemp ?? 0)) {
-          _setTemp = newMaxTemp;
-        }
         _maxTemp = newMaxTemp;
+        
+        if (!_shouldIgnoreUpdate('SetTemp')) _setTemp = tryDouble(data['TS']) ?? _setTemp;
         
         // Using the new _parseIncomingBool method
         if (!_shouldIgnoreUpdate('Calefa')) _calefa = _parseIncomingBool(data['Calefa'] ?? data['AC'], defaultValue: _calefa);
@@ -1044,6 +1067,7 @@ Future<void> _connect() async {
         // mark device as responding
         _isDeviceResponding = true;
         _cancelConnectionWatchdog();
+        _isWaitingForData = false;
       });
       return;
     }
@@ -1056,7 +1080,6 @@ Future<void> _connect() async {
     if (topic.toLowerCase() == 'serial' && payload.isNotEmpty) {
       (() async {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('serial', payload);
 
         // Añadir a la lista de dispositivos conocidos
         final devicesJson = prefs.getString(kDevicesKey) ?? '[]';
@@ -1074,7 +1097,7 @@ Future<void> _connect() async {
         }
         await prefs.setString(kDevicesKey, jsonEncode(devices.map((d) => d.toJson()).toList()));
 
-        if (mounted) setState(() => _status = 'Serial detectado vía BLE: $payload (guardado)');
+        if (mounted) setState(() => _status = 'Serial detectado vía BLE: $payload');
 
         // Iniciar un timer para intentar conexión MQTT con este serial
         _connectionWatchdogTimer?.cancel(); // Cancelar cualquier watchdog existente
@@ -1103,16 +1126,13 @@ Future<void> _connect() async {
       if (topic.contains('maxTemp')) {
         final double newMaxTemp = double.tryParse(payload) ?? _maxTemp;
         _maxTemp = newMaxTemp;
-        // Clamp setTemp to the new maxTemp
-        if (_setTemp != null) {
-          _setTemp = _setTemp!.clamp(10, _maxTemp);
-        }
+        // Removed clamp to allow setTemp to exceed maxTemp for display
         _saveMaxTemp(newMaxTemp);
       }
       
       if (topic.contains('SetTemp') && !_shouldIgnoreUpdate('SetTemp')) {
         final val = double.tryParse(payload);
-        if (val != null && val > 0) _setTemp = val;
+        if (val != null && val > 0) _setTemp = val;  // Don't clamp here, clamp when maxTemp is known
       }
       
       // REMOVED: bool isTrue(String val) { ... }
@@ -1356,7 +1376,9 @@ Future<void> _connect() async {
     if (mounted) {
       setState(() {
         _isConnected = false;
+        _isBleConnected = false;
         _status = 'Desconectado';
+        _isWaitingForData = false;
       });
     }
   }
@@ -1388,13 +1410,13 @@ Future<void> _connect() async {
   // --- LÓGICA DE CONTROL (MQTT / LOCAL) ---
   Future<void> _publishSetTemp(double value) async {
     // FIX: Clamp value to valid range before sending
-    final clampedValue = value.clamp(10, _maxTemp);
+    final clampedValue = value.clamp(10, _effectiveMaxTemp);
     
     // If value was clamped, update UI and show message
     if (clampedValue != value) {
       setState(() => _setTemp = clampedValue.toDouble()); // Convert to double
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('La temperatura no puede exceder $_maxTemp°C'))
+        SnackBar(content: Text('La temperatura no puede exceder ${_effectiveMaxTemp.toInt()}°C'))
       );
       return;
     }
@@ -1554,7 +1576,7 @@ Future<void> _connect() async {
 
   void _subscribeAll() {
     if (_mqttUserPrefix == null) return;
-    for (var t in ['TempActual', 'SetTemp', 'maxTemp', 'HYS', 'Calefa', 'OnOff', 'Luces', 'SESSION_CODE']) {
+    for (var t in ['TempActual', 'maxTemp', 'SetTemp', 'HYS', 'Calefa', 'OnOff', 'Luces', 'SESSION_CODE']) {
       _mqtt.subscribe('$_mqttUserPrefix/app/$t/value/set');
       // Suscribirse también al estado (value) para recibir actualizaciones del dispositivo (ej: Temperatura)
       _mqtt.subscribe('$_mqttUserPrefix/app/$t/value');
@@ -1581,9 +1603,9 @@ Future<void> _connect() async {
           final value = double.tryParse(payload);
           if (value != null) {
             _maxTemp = value;
-            // Clamp setTemp to the new maxTemp
+            // Clamp setTemp to 40
             if (_setTemp != null) {
-              _setTemp = _setTemp!.clamp(10, _maxTemp);
+              _setTemp = _setTemp!.clamp(10, 45);
             }
             _saveMaxTemp(value);
           }
@@ -1597,7 +1619,7 @@ Future<void> _connect() async {
         }
         if (topic.contains('SetTemp') && !topic.contains('locks') && !_shouldIgnoreUpdate('SetTemp')) {
           final val = double.tryParse(payload);
-          if (val != null && val > 0) _setTemp = val;
+          if (val != null && val > 0) _setTemp = val.clamp(10, 45);
         }
         if (topic.contains('Calefa') && !topic.contains('locks') && !_shouldIgnoreUpdate('Calefa')) _calefa = _parseIncomingBool(payload);
         if (topic.contains('OnOff') && !topic.contains('locks') && !_shouldIgnoreUpdate('OnOff')) _jet = _parseIncomingBool(payload);
@@ -1610,6 +1632,7 @@ Future<void> _connect() async {
         if (topic.contains('HasPin')) _hasPin = _parseIncomingBool(payload);
         if (topic.contains('SESSION_CODE')) _sessionCode = payload;
       });
+      if (_isWaitingForData) _isWaitingForData = false;
     });
   }
 
@@ -1743,8 +1766,9 @@ Future<void> _connect() async {
   Widget _buildControlPanel() {
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
+    Widget content;
     if (isLandscape) {
-      return Column(
+      content = Column(
         children: [
           _buildHeader(),
           Expanded(
@@ -1795,9 +1819,8 @@ Future<void> _connect() async {
           ),
         ],
       );
-    }
-
-    return Column(
+  } else {
+    content = Column(
       children: [
         _buildHeader(),
         Expanded(
@@ -1826,6 +1849,23 @@ Future<void> _connect() async {
       ],
     );
   }
+
+  return Stack(
+    children: [
+      AbsorbPointer(
+        absorbing: _isWaitingForData,
+        child: content,
+      ),
+      if (_isWaitingForData)
+        Container(
+          color: Colors.black.withOpacity(0.5),
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+    ],
+  );
+}
 
   Widget _buildHeader() {
     return Padding(
@@ -1992,10 +2032,10 @@ Future<void> _connect() async {
                   thumbColor: isLocked ? Colors.grey : Colors.white, // Se agregó la coma faltante
                 ),
                 child: Slider( // SE AGREGÓ EL PARÁMETRO 'child' OBLIGATORIO
-                  value: (_setTemp ?? 25.0).clamp(10, _maxTemp), // Valor actual
+                  value: (_setTemp ?? 25.0).clamp(10, 45), // Valor actual
                   min: 10,
-                  max: _maxTemp,
-                  divisions: (_maxTemp - 10).toInt() > 0 ? (_maxTemp - 10).toInt() : 1,
+                  max: _effectiveMaxTemp,
+                  divisions: 50,
                   // Corrección del error en línea 1679: agregamos '=>' o llaves {}
                   onChangeStart: (v) => _tempBeforeChange = _setTemp, 
                   onChanged: (v) => setState(() => _setTemp = v),
@@ -2037,8 +2077,8 @@ Future<void> _connect() async {
                   thumbColor: isLocked ? Colors.grey : Colors.white,
                 ),
                 child: Slider(
-                  value: (_setTemp ?? 10).clamp(10, _maxTemp),
-                  min: 10, max: _maxTemp,
+                  value: (_setTemp ?? 10).clamp(10, _effectiveMaxTemp),
+                  min: 10, max: _effectiveMaxTemp,
                   onChangeStart: (v) {
                     _tempBeforeChange = _setTemp;
                   },
@@ -3024,7 +3064,6 @@ class _BleScanScreenState extends State<BleScanScreen> {
                                 devices.add(DeviceInfo(serial: found, lastSeen: now, chipId: found));
                               }
                               await prefs.setString(kDevicesKey, jsonEncode(devices.map((d) => d.toJson()).toList()));
-                              await prefs.setString('serial', found);
                             } catch (_) {}
                           }
                           return found;
@@ -3061,7 +3100,6 @@ class _BleScanScreenState extends State<BleScanScreen> {
                                 devices.add(DeviceInfo(serial: found, lastSeen: now, chipId: found));
                               }
                               await prefs.setString(kDevicesKey, jsonEncode(devices.map((d) => d.toJson()).toList()));
-                              await prefs.setString('serial', found);
                             } catch (_) {}
                           }
                           return found;

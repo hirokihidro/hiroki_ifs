@@ -84,8 +84,6 @@ class _DevicesPageState extends State<DevicesPage> {
             }, itemBuilder: (ctx) => [const PopupMenuItem(value: 'edit', child: Text('Editar apodo')), const PopupMenuItem(value: 'default', child: Text('Usar por defecto')), const PopupMenuItem(value: 'delete', child: Text('Eliminar'))]),
             onTap: () async {
               // Seleccionar dispositivo como activo y volver
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString('serial', d.serial);
               Navigator.pop(context, d.serial);
             },
           );
