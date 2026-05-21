@@ -17,6 +17,8 @@ import 'local_discovery_service.dart';
 import 'ble_service.dart';
 import 'models/device.dart';
 
+const Color kAccentColor = Colors.white;
+
 String generateMasterKey(String sessionCode) {
   if (sessionCode.isEmpty) return '';
   const secretSalt = "Hiroki_Security_2026_Salt";
@@ -96,31 +98,49 @@ class _SecurityPageState extends State<SecurityPage> {
     final masterKey = await showDialog<String>(
       context: context,
       builder: (c) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Acceso Configuración Técnica'),
+        backgroundColor: Colors.black,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Colors.white24, width: 1),
+        ),
+        title: const Text('Acceso Configuración Técnica', style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Session Code del chip: $sessionCode', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            Text('Session Code del chip: $sessionCode', style: const TextStyle(fontWeight: FontWeight.bold, color: kAccentColor)),
             const SizedBox(height: 10),
-            const Text('Ingrese la clave maestra para acceder a configuración técnica.'),
+            const Text('Ingrese la clave maestra para acceder a configuración técnica.', style: TextStyle(color: Colors.white70)),
             const SizedBox(height: 10),
             TextField(
               controller: _masterKeyController,
-              decoration: const InputDecoration(labelText: 'Clave Maestra (6 dígitos)', border: OutlineInputBorder()),
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Clave Maestra (6 dígitos)',
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                border: OutlineInputBorder(),
+              ),
               keyboardType: TextInputType.text,
               textCapitalization: TextCapitalization.characters,
+              obscureText: true,
               maxLength: 6,
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text('CANCELAR')),
-          TextButton(onPressed: () {
-            final key = _masterKeyController.text.trim().toUpperCase();
-            _masterKeyController.clear();
-            Navigator.pop(c, key);
-          }, child: const Text('ACCEDER'))
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: const Text('CANCELAR', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+          ),
+          TextButton(
+            onPressed: () {
+              final key = _masterKeyController.text.trim().toUpperCase();
+              _masterKeyController.clear();
+              Navigator.pop(c, key);
+            },
+            child: const Text('ACCEDER', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold)),
+          )
         ],
       ),
     );
@@ -141,20 +161,28 @@ class _SecurityPageState extends State<SecurityPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Seguridad del Equipo'), backgroundColor: const Color(0xFF1E1E1E)),
+      appBar: AppBar(title: const Text('Seguridad del Equipo'), backgroundColor: Colors.black, iconTheme: const IconThemeData(color: Colors.white)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Gestión de Claves', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            const Text('Gestión de Claves', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
             const SizedBox(height: 10),
             if (widget.hasPin) ...[
               const Text('Ingrese la clave actual (o Maestra) para autorizar cambios.', style: TextStyle(color: Colors.white70, fontSize: 12)),
               const SizedBox(height: 10),
               TextField(
                 controller: _oldPinController,
-                decoration: const InputDecoration(labelText: 'Clave Actual / Maestra', border: OutlineInputBorder(), counterText: ""),
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Clave Actual / Maestra',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                  focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                  border: OutlineInputBorder(),
+                  counterText: "",
+                ),
                 maxLength: 6,
                 textCapitalization: TextCapitalization.characters,
               ),
@@ -164,39 +192,47 @@ class _SecurityPageState extends State<SecurityPage> {
             const SizedBox(height: 10),
             TextField(
               controller: _newPinController,
-              decoration: const InputDecoration(labelText: 'Nueva Clave (Opcional)', border: OutlineInputBorder(), counterText: ""),
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Nueva Clave (Opcional)',
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                border: OutlineInputBorder(),
+                counterText: "",
+              ),
               maxLength: 6,
               textCapitalization: TextCapitalization.characters,
             ),
             const SizedBox(height: 30),
             const Divider(color: Colors.white24),
             const SizedBox(height: 10),
-            const Text('Bloqueo de Funciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            const Text('Bloqueo de Funciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
             const SizedBox(height: 5),
             const Text('Seleccione qué funciones requerirán la clave para ser activadas.', style: TextStyle(color: Colors.white70, fontSize: 12)),
             const SizedBox(height: 15),
             SwitchListTile(
               title: const Text('Bloquear Temperatura (SetTemp)', style: TextStyle(color: Colors.white)),
               value: _lockSetTemp,
-              activeColor: Colors.redAccent,
+              activeColor: kAccentColor,
               onChanged: (v) => setState(() => _lockSetTemp = v),
             ),
             SwitchListTile(
               title: const Text('Bloquear Calefacción', style: TextStyle(color: Colors.white)),
               value: _lockCalefa,
-              activeColor: Colors.redAccent,
+              activeColor: kAccentColor,
               onChanged: (v) => setState(() => _lockCalefa = v),
             ),
             SwitchListTile(
               title: const Text('Bloquear Jets / Motor', style: TextStyle(color: Colors.white)),
               value: _lockJets,
-              activeColor: Colors.redAccent,
+              activeColor: kAccentColor,
               onChanged: (v) => setState(() => _lockJets = v),
             ),
             SwitchListTile(
               title: const Text('Bloquear Luces', style: TextStyle(color: Colors.white)),
               value: _lockLuces,
-              activeColor: Colors.redAccent,
+              activeColor: kAccentColor,
               onChanged: (v) => setState(() => _lockLuces = v),
             ),
             const SizedBox(height: 30),
@@ -213,8 +249,13 @@ class _SecurityPageState extends State<SecurityPage> {
                     mqttService: widget.mqttService,
                   )));
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.yellowAccent, foregroundColor: Colors.black),
-                child: Text('CONFIGURACIÓN TÉCNICA'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white24),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('CONFIGURACIÓN TÉCNICA', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
               ),
             ),
             const SizedBox(height: 10),
@@ -223,8 +264,14 @@ class _SecurityPageState extends State<SecurityPage> {
               height: 50,
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _saveSecurityConfig,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
-                child: _isSaving ? const CircularProgressIndicator() : const Text('GUARDAR CONFIGURACIÓN EN CHIP'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _isSaving
+                    ? const CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.black))
+                    : const Text('GUARDAR CONFIGURACIÓN EN CHIP', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
               ),
             ),
           ],
@@ -400,23 +447,37 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Configuración Maestra'), backgroundColor: const Color(0xFF1E1E1E)),
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('Configuración Maestra', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Parámetros de Servicio', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.yellowAccent)),
+            const Text('Parámetros de Servicio', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
             const SizedBox(height: 20),
 
             if (widget.hasPin) ...[
-              const Text('Autenticación', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.yellowAccent)),
+              const Text('Autenticación', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
               const SizedBox(height: 10),
               const Text('Ingrese la clave actual o maestra para autorizar cambios.', style: TextStyle(color: Colors.white70, fontSize: 12)),
               const SizedBox(height: 10),
               TextField(
                 controller: _oldPinController,
-                decoration: const InputDecoration(labelText: 'Clave Actual / Maestra', border: OutlineInputBorder(), counterText: ""),
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Clave Actual / Maestra',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                  focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                  border: OutlineInputBorder(),
+                  counterText: "",
+                ),
                 maxLength: 6,
                 textCapitalization: TextCapitalization.characters,
               ),
@@ -429,7 +490,8 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
               min: 20, max: 45,
               divisions: 25,
               label: _maxTemp.toInt().toString(),
-              activeColor: Colors.yellowAccent,
+              activeColor: kAccentColor,
+              inactiveColor: Colors.white24,
               onChanged: (v) => setState(() => _maxTemp = v),
             ),
 
@@ -439,30 +501,74 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
               min: 1, max: 6, 
               divisions: 5,
               label: _histeresis.toInt().toString(),
-              activeColor: Colors.yellowAccent,
+              activeColor: kAccentColor,
+              inactiveColor: Colors.white24,
               onChanged: (v) => setState(() => _histeresis = v),
             ),
 
             // campo de tiempo de espera eliminado
             
-            
-            const Text('Restaurar Seguridad', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.yellowAccent)),
-            CheckboxListTile(
-              title: const Text('Restaurar PIN a fábrica (Sin PIN)', style: TextStyle(color: Colors.white)),
-              value: _resetPin,
-              onChanged: (v) => setState(() => _resetPin = v ?? false),
-              activeColor: Colors.red,
+            const Text('Restaurar Seguridad', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: CheckboxListTile(
+                title: const Text('Restaurar PIN a fábrica (Sin PIN)', style: TextStyle(color: Colors.white)),
+                value: _resetPin,
+                onChanged: (v) => setState(() => _resetPin = v ?? false),
+                activeColor: kAccentColor,
+                checkColor: Colors.black,
+                controlAffinity: ListTileControlAffinity.trailing,
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 25),
 
-            const Text('Configuración MQTT', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.yellowAccent)),
-            const SizedBox(height: 10),
-            TextField(controller: _brokerCtrl, decoration: const InputDecoration(labelText: 'Broker MQTT', border: OutlineInputBorder())),
-            const SizedBox(height: 10),
-            TextField(controller: _portCtrl, decoration: const InputDecoration(labelText: 'Puerto MQTT', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+            const Text('Configuración MQTT', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
+            const SizedBox(height: 15),
+            TextField(
+              controller: _brokerCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Broker MQTT',
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: _portCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Puerto MQTT',
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
             
-            const SizedBox(height: 30),
-            SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: _isSaving ? null : _saveMasterConfig, style: ElevatedButton.styleFrom(backgroundColor: Colors.yellowAccent, foregroundColor: Colors.black), child: _isSaving ? const CircularProgressIndicator() : const Text('GUARDAR CAMBIOS'))),
+            const SizedBox(height: 35),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _saveMasterConfig,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _isSaving
+                    ? const CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.black))
+                    : const Text('GUARDAR CAMBIOS', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+              ),
+            ),
           ],
         ),
       ),

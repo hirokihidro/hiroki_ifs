@@ -42,6 +42,8 @@ class UpperCaseTextFormatter extends TextInputFormatter {
   }
 }
 
+const Color kAccentColor = Colors.white;
+
 void main() {
   runApp(Phoenix(child: MyApp()));
 }
@@ -55,8 +57,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark, // Configura el tema oscuro por defecto
-        primaryColor: const Color(0xFF1DB954), // Color primario para elementos interactivos
-        scaffoldBackgroundColor: const Color(0xFF121212), // Fondo principal de la aplicación
+        primaryColor: Colors.white, // Color primario monocromático
+        scaffoldBackgroundColor: Colors.black, // Fondo principal full black
         textTheme: GoogleFonts.montserratTextTheme( // Aplica Montserrat a todo el TextTheme
           Theme.of(context).textTheme.apply(
             bodyColor: Colors.white, // Color del texto principal
@@ -64,34 +66,33 @@ class MyApp extends StatelessWidget {
           ),
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF121212), // Color de fondo del AppBar
+          backgroundColor: Colors.black, // Color de fondo del AppBar full black
           foregroundColor: Colors.white, // Color del texto y los iconos en el AppBar
         ),
         snackBarTheme: const SnackBarThemeData(
-          backgroundColor: Colors.grey,
+          backgroundColor: Color(0xFF1E1E1E),
           contentTextStyle: TextStyle(color: Colors.white),
         ),
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF1DB954),
-          secondary: Color(0xFF1DB954),
-          surface: Color(0xFF1E1E1E), // Color de las superficies como Cards o Dialogs
-          background: Color(0xFF121212),
+          primary: Colors.white,
+          secondary: kAccentColor,
+          surface: Colors.black, // Color de las superficies en negro
+          background: Colors.black,
           error: Colors.redAccent,
-          onPrimary: Colors.white,
-          onSecondary: Colors.white,
+          onPrimary: Colors.black,
+          onSecondary: Colors.black,
           onSurface: Colors.white,
           onBackground: Colors.white,
           onError: Colors.black,
         ),
-        // Puedes añadir más configuraciones para los colores de los iconos y sliders si es necesario
         iconTheme: const IconThemeData(color: Colors.white70),
         sliderTheme: SliderThemeData(
-          activeTrackColor: const Color(0xFF1DB954),
+          activeTrackColor: Colors.white,
           inactiveTrackColor: Colors.white30,
-          thumbColor: const Color(0xFF1DB954),
-          overlayColor: const Color(0xFF1DB954).withOpacity(0.2),
-          valueIndicatorColor: const Color(0xFF1DB954),
-          valueIndicatorTextStyle: const TextStyle(color: Colors.white),
+          thumbColor: Colors.white,
+          overlayColor: Colors.white.withOpacity(0.2),
+          valueIndicatorColor: kAccentColor,
+          valueIndicatorTextStyle: const TextStyle(color: Colors.black),
         ),
       ),
       home: HomePage(
@@ -114,97 +115,114 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _showSavedDevicesDialog() {
-  showDialog(
-    context: context,
-    builder: (context) => StatefulBuilder( // Para actualizar nombres dentro del modal
-      builder: (context, setModalState) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Equipos Guardados'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: _devices.isEmpty 
-            ? const Text('No hay equipos guardados aún.', style: TextStyle(color: Colors.white54))
-            : ListView.builder(
-                shrinkWrap: true,
-                itemCount: _devices.length,
-                itemBuilder: (context, index) {
-                  final device = _devices[index];
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(device.nickname ?? device.serial, 
-                        style: const TextStyle(color: Colors.white)),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(device.nickname != null ? device.serial : 'Sin nombre',
-                            style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                        if (device.chipId != null && device.chipId!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text('ChipID: ' + device.chipId!, style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                        ]
-                      ],
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 20, color: Colors.cyanAccent),
-                          onPressed: () async {
-                            String? newName = await _showEditNicknameDialog(device);
-                            if (newName != null) {
-                              await _addOrUpdateDevice(device.serial, nickname: newName);
-                              setModalState(() {}); // Actualiza el modal
-                              setState(() {}); // Actualiza el dropdown del inicio
-                            }
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent),
-                          onPressed: () async {
-                            await _deleteDevice(device.serial);
-                            setModalState(() {});
-                            setState(() {});
-                          },
-                        ),
-                      ],
-                    ),
-                    onTap: () {
-                      _serialController.text = device.serial;
-                      Navigator.pop(context);
-                      _connect();
-                    },
-                  );
-                },
-              ),
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder( // Para actualizar nombres dentro del modal
+        builder: (context, setModalState) => AlertDialog(
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+          title: const Text('Equipos Guardados', style: TextStyle(color: Colors.white)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: _devices.isEmpty 
+              ? const Text('No hay equipos guardados aún.', style: TextStyle(color: Colors.white54))
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _devices.length,
+                  itemBuilder: (context, index) {
+                    final device = _devices[index];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(device.nickname ?? device.serial, 
+                          style: const TextStyle(color: Colors.white)),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(device.nickname != null ? device.serial : 'Sin nombre',
+                              style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                          if (device.chipId != null && device.chipId!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text('ChipID: ' + device.chipId!, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                          ]
+                        ],
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 20, color: Colors.white70),
+                            onPressed: () async {
+                              String? newName = await _showEditNicknameDialog(device);
+                              if (newName != null) {
+                                await _addOrUpdateDevice(device.serial, nickname: newName);
+                                setModalState(() {}); // Actualiza el modal
+                                setState(() {}); // Actualiza el dropdown del inicio
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent),
+                            onPressed: () async {
+                              await _deleteDevice(device.serial);
+                              setModalState(() {});
+                              setState(() {});
+                            },
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        _serialController.text = device.serial;
+                        Navigator.pop(context);
+                        _connect();
+                      },
+                    );
+                  },
+                ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), 
+              child: const Text('CERRAR', style: TextStyle(color: Colors.white70))
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
+    final ctrl = TextEditingController(text: device.nickname);
+    return showDialog<String>(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: Colors.black,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+        title: Text('Nombre para ${device.serial}', style: const TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Ej: Terraza, Quincho...',
+            hintStyle: TextStyle(color: Colors.white38),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+          ),
+          textCapitalization: TextCapitalization.sentences,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CERRAR')),
+          TextButton(
+            onPressed: () => Navigator.pop(c), 
+            child: const Text('CANCELAR', style: TextStyle(color: Colors.white70))
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(c, ctrl.text.trim()), 
+            child: const Text('GUARDAR', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold))
+          ),
         ],
       ),
-    ),
-  );
-}
-
-Future<String?> _showEditNicknameDialog(DeviceInfo device) async {
-  final ctrl = TextEditingController(text: device.nickname);
-  return showDialog<String>(
-    context: context,
-    builder: (c) => AlertDialog(
-      backgroundColor: const Color(0xFF1E1E1E),
-      title: Text('Nombre para ${device.serial}'),
-      content: TextField(
-        controller: ctrl,
-        autofocus: true,
-        decoration: const InputDecoration(hintText: 'Ej: Terraza, Quincho...'),
-        textCapitalization: TextCapitalization.sentences,
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c), child: const Text('CANCELAR')),
-        TextButton(onPressed: () => Navigator.pop(c, ctrl.text.trim()), child: const Text('GUARDAR')),
-      ],
-    ),
-  );
-}
+    );
+  }
   
   final _serialController = TextEditingController();
   final _mqtt = MqttService();
@@ -720,12 +738,34 @@ Future<void> _connect() async {
     final serial = _serialController.text.trim();
     if (serial.isEmpty) return;
 
+
     // Si Bluetooth está disponible, intentamos encontrar el dispositivo por nombre (hiroki<serial>)
     final btOn = await _bleService.isBluetoothOn();
     if (btOn) {
       // Mostrar diálogo de búsqueda
       if (!mounted) return;
-      showDialog(context: context, barrierDismissible: false, builder: (c) => AlertDialog(backgroundColor: const Color(0xFF1E1E1E), title: const Text('Buscando dispositivo...'), content: SizedBox(height:80, child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: const [CircularProgressIndicator(), SizedBox(height:12), Text('Escaneando Bluetooth...')])))));
+      showDialog(
+        context: context, 
+        barrierDismissible: false, 
+        builder: (c) => AlertDialog(
+          backgroundColor: Colors.black, 
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+          title: const Text('Buscando dispositivo...', style: TextStyle(color: Colors.white)), 
+          content: SizedBox(
+            height: 90, 
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min, 
+                children: const [
+                  CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(kAccentColor)), 
+                  SizedBox(height: 16), 
+                  Text('Escaneando Bluetooth...', style: TextStyle(color: Colors.white70))
+                ]
+              )
+            )
+          )
+        )
+      );
 
       final found = Completer<BluetoothDevice?>();
       StreamSubscription? sub;
@@ -776,17 +816,18 @@ Future<void> _connect() async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Colors.black,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
         title: Text(title),
         content: Text('No se pudo conectar a la nube. ¿Desea buscar el equipo Hiroki$serial por Bluetooth?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCELAR')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCELAR', style: TextStyle(color: Colors.white70))),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _startBleDiscovery();
             },
-            child: const Text('BUSCAR BLUETOOTH', style: TextStyle(color: Colors.cyanAccent)),
+            child: const Text('BUSCAR BLUETOOTH', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -801,11 +842,12 @@ Future<void> _connect() async {
       showDialog(
         context: context,
         builder: (c) => AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          title: const Text('Bluetooth desactivado'),
-          content: const Text('Bluetooth parece estar apagado. Por favor habilítelo en configuración del sistema y presione Reintentar.'),
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+          title: const Text('Bluetooth desactivado', style: TextStyle(color: Colors.white)),
+          content: const Text('Bluetooth parece estar apagado. Por favor habilítelo en configuración del sistema y presione Reintentar.', style: TextStyle(color: Colors.white70)),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c), child: const Text('CANCELAR')),
+            TextButton(onPressed: () => Navigator.pop(c), child: const Text('CANCELAR', style: TextStyle(color: Colors.white70))),
             TextButton(
               onPressed: () async {
                 Navigator.pop(c);
@@ -820,14 +862,14 @@ Future<void> _connect() async {
                   await openAppSettings();
                 }
               },
-              child: const Text('ABRIR AJUSTES BT', style: TextStyle(color: Colors.cyanAccent)),
+              child: const Text('ABRIR AJUSTES BT', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold)),
             ),
             TextButton(
               onPressed: () {
                 Navigator.pop(c);
                 _startBleDiscovery();
               },
-              child: const Text('REINTENTAR', style: TextStyle(color: Colors.cyanAccent)),
+              child: const Text('REINTENTAR', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -851,17 +893,18 @@ Future<void> _connect() async {
       showDialog(
         context: context,
         builder: (c) => AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          title: const Text('Permisos'),
-          content: const Text('Permisos de Bluetooth denegados permanentemente. Abre la configuración de la app y habilítalos.'),
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+          title: const Text('Permisos', style: TextStyle(color: Colors.white)),
+          content: const Text('Permisos de Bluetooth denegados permanentemente. Abre la configuración de la app y habilítalos.', style: TextStyle(color: Colors.white70)),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c), child: const Text('CANCELAR')),
+            TextButton(onPressed: () => Navigator.pop(c), child: const Text('CANCELAR', style: TextStyle(color: Colors.white70))),
             TextButton(
               onPressed: () async {
                 Navigator.pop(c);
                 await openAppSettings();
               },
-              child: const Text('ABRIR AJUSTES', style: TextStyle(color: Colors.cyanAccent)),
+              child: const Text('ABRIR AJUSTES', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -875,11 +918,12 @@ Future<void> _connect() async {
       showDialog(
         context: context,
         builder: (c) => AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          title: const Text('Permisos'),
-          content: const Text('Se requieren permisos BLUETOOTH_SCAN y BLUETOOTH_CONNECT para escanear y conectar. Puedes abrir los ajustes de la app o intentar solicitarlos nuevamente.'),
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+          title: const Text('Permisos', style: TextStyle(color: Colors.white)),
+          content: const Text('Se requieren permisos BLUETOOTH_SCAN y BLUETOOTH_CONNECT para escanear y conectar. Puedes abrir los ajustes de la app o intentar solicitarlos nuevamente.', style: TextStyle(color: Colors.white70)),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c), child: const Text('CANCELAR')),
+            TextButton(onPressed: () => Navigator.pop(c), child: const Text('CANCELAR', style: TextStyle(color: Colors.white70))),
             TextButton(
               onPressed: () async {
                 Navigator.pop(c);
@@ -888,14 +932,14 @@ Future<void> _connect() async {
                 // Reintentar descubrir si permisos fueron concedidos
                 _startBleDiscovery();
               },
-              child: const Text('SOLICITAR PERMISOS', style: TextStyle(color: Colors.cyanAccent)),
+              child: const Text('SOLICITAR PERMISOS', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold)),
             ),
             TextButton(
               onPressed: () async {
                 Navigator.pop(c);
                 await openAppSettings();
               },
-              child: const Text('ABRIR AJUSTES', style: TextStyle(color: Colors.cyanAccent)),
+              child: const Text('ABRIR AJUSTES', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -991,7 +1035,28 @@ Future<void> _connect() async {
 
     // Mostrar dialog de búsqueda
     if (!mounted) return;
-    showDialog(context: context, barrierDismissible: false, builder: (c) => AlertDialog(backgroundColor: const Color(0xFF1E1E1E), title: const Text('Buscando dispositivo guardado...'), content: SizedBox(height:80, child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: const [CircularProgressIndicator(), SizedBox(height:12), Text('Escaneando...')])))));
+    showDialog(
+      context: context, 
+      barrierDismissible: false, 
+      builder: (c) => AlertDialog(
+        backgroundColor: Colors.black, 
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+        title: const Text('Buscando dispositivo guardado...', style: TextStyle(color: Colors.white)), 
+        content: SizedBox(
+          height: 90, 
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min, 
+              children: const [
+                CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(kAccentColor)), 
+                SizedBox(height: 16), 
+                Text('Escaneando...', style: TextStyle(color: Colors.white70))
+              ]
+            )
+          )
+        )
+      )
+    );
 
     final found = Completer<BluetoothDevice?>();
     StreamSubscription? sub;
@@ -1219,25 +1284,42 @@ Future<void> _connect() async {
       context: context,
       barrierDismissible: false,
       builder: (c) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: Text('Enviar credenciales a "$ssid"'),
+        backgroundColor: Colors.black,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+        title: Text('Enviar credenciales a "$ssid"', style: const TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('SSID seleccionado:\n$ssid', style: const TextStyle()),
+            Text('SSID seleccionado:\n$ssid', style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 12),
-            TextField(controller: passCtrl, decoration: const InputDecoration(labelText: 'Contraseña'), obscureText: true),
+            TextField(
+              controller: passCtrl, 
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Contraseña',
+                labelStyle: TextStyle(color: Colors.white60),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+              ), 
+              obscureText: true
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('CANCELAR')),
-          TextButton(onPressed: () async {
-            final pass = passCtrl.text; // Capturamos el texto antes de cerrar
-            Navigator.pop(c, true); // Cierra el diálogo de contraseña
-            if (!mounted) return;
-            final ok = await _bleService.sendCommand('setup/wifi|${ssid}|${pass}', '');
-            _onWifiCredentialsSent(ok);
-          }, child: const Text('ENVIAR')),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false), 
+            child: const Text('CANCELAR', style: TextStyle(color: Colors.white70))
+          ),
+          TextButton(
+            onPressed: () async {
+              final pass = passCtrl.text; // Capturamos el texto antes de cerrar
+              Navigator.pop(c, true); // Cierra el diálogo de contraseña
+              if (!mounted) return;
+              final ok = await _bleService.sendCommand('setup/wifi|${ssid}|${pass}', '');
+              _onWifiCredentialsSent(ok);
+            }, 
+            child: const Text('ENVIAR', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold))
+          ),
         ],
       ),
     );
@@ -1285,9 +1367,22 @@ Future<void> _connect() async {
       context: context,
       barrierDismissible: false,
       builder: (c) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Buscando redes Wi‑Fi...'),
-        content: SizedBox(height: 80, child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: const [CircularProgressIndicator(), SizedBox(height: 12), Text('Escaneando...')]))),
+        backgroundColor: Colors.black,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+        title: const Text('Buscando redes Wi‑Fi...', style: TextStyle(color: Colors.white)),
+        content: SizedBox(
+          height: 90, 
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min, 
+              children: const [
+                CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(kAccentColor)), 
+                SizedBox(height: 16), 
+                Text('Escaneando...', style: TextStyle(color: Colors.white70))
+              ]
+            )
+          )
+        ),
       ),
     );
 
@@ -1300,12 +1395,13 @@ Future<void> _connect() async {
       final manual = await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          title: const Text('No se encontraron redes'),
-          content: const Text('No se detectaron redes vía BLE ni localmente. ¿Desea ingresar el SSID manualmente?'),
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+          title: const Text('No se encontraron redes', style: TextStyle(color: Colors.white)),
+          content: const Text('No se detectaron redes vía BLE ni localmente. ¿Desea ingresar el SSID manualmente?', style: TextStyle(color: Colors.white70)),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('CANCELAR')),
-            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('MANUAL')),
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('CANCELAR', style: TextStyle(color: Colors.white70))),
+            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('MANUAL', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold))),
           ],
         ),
       );
@@ -1317,17 +1413,49 @@ Future<void> _connect() async {
         await showDialog(
           context: context,
           builder: (c) => AlertDialog(
-            backgroundColor: const Color(0xFF1E1E1E),
-            title: const Text('Configurar Wi‑Fi del Equipo'),
-            content: Column(mainAxisSize: MainAxisSize.min, children: [TextField(controller: ssidCtrl, decoration: const InputDecoration(labelText: 'SSID (Nombre Red)')), TextField(controller: passCtrl, decoration: const InputDecoration(labelText: 'Contraseña'), obscureText: true)]),
+            backgroundColor: Colors.black,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+            title: const Text('Configurar Wi‑Fi del Equipo', style: TextStyle(color: Colors.white)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min, 
+              children: [
+                TextField(
+                  controller: ssidCtrl, 
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'SSID (Nombre Red)',
+                    labelStyle: TextStyle(color: Colors.white60),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                  )
+                ), 
+                TextField(
+                  controller: passCtrl, 
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Contraseña',
+                    labelStyle: TextStyle(color: Colors.white60),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                  ), 
+                  obscureText: true
+                )
+              ]
+            ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(c), child: const Text('CANCELAR')),
-              TextButton(onPressed: () async {
-                Navigator.pop(c);
-                if (!mounted) return;
-                final ok = await _bleService.sendCommand('setup/wifi|${ssidCtrl.text}|${passCtrl.text}', '');
-                _onWifiCredentialsSent(ok);
-              }, child: const Text('ENVIAR')),
+              TextButton(
+                onPressed: () => Navigator.pop(c), 
+                child: const Text('CANCELAR', style: TextStyle(color: Colors.white70))
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(c);
+                  if (!mounted) return;
+                  final ok = await _bleService.sendCommand('setup/wifi|${ssidCtrl.text}|${passCtrl.text}', '');
+                  _onWifiCredentialsSent(ok);
+                }, 
+                child: const Text('ENVIAR', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold))
+              ),
             ],
           ),
         );
@@ -1342,8 +1470,9 @@ Future<void> _connect() async {
     await showDialog(
       context: context,
       builder: (c) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Redes disponibles'),
+        backgroundColor: Colors.black,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+        title: const Text('Redes disponibles', style: TextStyle(color: Colors.white)),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -1359,7 +1488,7 @@ Future<void> _connect() async {
               }
               final ss = ssids[index];
               return ListTile(
-                leading: const Icon(Icons.wifi, color: Colors.cyanAccent),
+                leading: const Icon(Icons.wifi, color: kAccentColor),
                 title: Text(ss, style: const TextStyle(color: Colors.white)),
                 onTap: () { Navigator.pop(context); _showSendCredentialsDialog(ss); },
               );
@@ -1394,15 +1523,24 @@ Future<void> _connect() async {
       context: context,
       barrierDismissible: !showSpinner,
       builder: (c) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: Text(title),
+        backgroundColor: Colors.black,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.white24, width: 1)),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
         content: Row(
           children: [
-            if (showSpinner) ...[const CircularProgressIndicator(), const SizedBox(width: 20)],
-            Expanded(child: Text(content)),
+            if (showSpinner) ...[
+              const CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(kAccentColor)), 
+              const SizedBox(width: 20)
+            ],
+            Expanded(child: Text(content, style: const TextStyle(color: Colors.white70))),
           ],
         ),
-        actions: showSpinner ? [] : [TextButton(onPressed: () => Navigator.pop(c), child: const Text('OK'))],
+        actions: showSpinner ? [] : [
+          TextButton(
+            onPressed: () => Navigator.pop(c), 
+            child: const Text('OK', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold))
+          )
+        ],
       ),
     );
   }
@@ -1671,7 +1809,7 @@ Future<void> _connect() async {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212), // Asegura un fondo oscuro al inicio de la aplicación
+      backgroundColor: Colors.black, // Asegura un fondo negro al inicio de la aplicación
       body: SafeArea(child: _isConnected ? _buildControlPanel() : _buildLoginScreen()),
     );
   }
@@ -1721,23 +1859,37 @@ Future<void> _connect() async {
                   child: ElevatedButton(
                     onPressed: _connectFromDropdown,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyanAccent, 
-                      foregroundColor: Colors.black
+                      backgroundColor: Colors.white, 
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    child: const Text('CONECTAR'),
+                    child: const Text('CONECTAR', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
                   ),
                 ),
                 const SizedBox(width: 10),
                 // Botón de Escaneo BLE existente
                 OutlinedButton(
                   onPressed: _startBleDiscovery, 
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white24),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.all(14),
+                  ),
                   child: const Icon(Icons.bluetooth_searching, size: 20)
                 ),
                 const SizedBox(width: 10),
                 // NUEVO BOTÓN: Guardados
                 OutlinedButton(
                   onPressed: _showSavedDevicesDialog, 
-                  child: const Icon(Icons.history, color: Colors.white70)
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white24),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.all(14),
+                  ),
+                  child: const Icon(Icons.history, color: Colors.white)
                 ),
               ],
             ),
@@ -1745,15 +1897,16 @@ Future<void> _connect() async {
             const SizedBox(height: 10),
 
             // Botón para configurar por Wi-Fi sin Bluetooth
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () {
-                  // This will navigate to the new page created in the next step
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const HirokiConfigPage()));
-                },
-                icon: const Icon(Icons.wifi_tethering, color: Colors.white60, size: 18),
-                label: const Text('Hiroki sin Bluetooth', style: TextStyle(color: Colors.white60)),
+            SizedBox(
+              width: double.infinity,
+              child: Center(
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const HirokiConfigPage()));
+                  },
+                  icon: const Icon(Icons.wifi_tethering, color: Colors.white60, size: 18),
+                  label: const Text('Hiroki sin Bluetooth', style: TextStyle(color: Colors.white60)),
+                ),
               ),
             ),
 
@@ -1950,8 +2103,9 @@ Future<void> _connect() async {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 35),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
+        color: Colors.black,
         borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white12, width: 1),
       ),
       child: Column(
         children: [
@@ -1968,21 +2122,11 @@ Future<void> _connect() async {
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white10),
                     ),
-                    ShaderMask(
-                      shaderCallback: (rect) {
-                        return const SweepGradient(
-                          startAngle: 0.0,
-                          endAngle: math.pi * 2,
-                          colors: [Colors.blue, Colors.red],
-                          transform: GradientRotation(-math.pi / 2),
-                        ).createShader(rect);
-                      },
-                      child: CircularProgressIndicator(
-                        value: (_currentTemp ?? 0) / 50,
-                        strokeWidth: 2,
-                        backgroundColor: Colors.transparent,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
+                    CircularProgressIndicator(
+                      value: (_currentTemp ?? 0) / 50,
+                      strokeWidth: 2,
+                      backgroundColor: Colors.transparent,
+                      valueColor: const AlwaysStoppedAnimation<Color>(kAccentColor),
                     ),
                   ],
                 ),
@@ -2014,8 +2158,9 @@ Future<void> _connect() async {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
+        color: Colors.black,
         borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white12, width: 1),
       ),
       child: Column(
         children: [
@@ -2027,9 +2172,9 @@ Future<void> _connect() async {
                 data: SliderTheme.of(context).copyWith(
                   trackHeight: 2,
                   thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-                  activeTrackColor: Colors.white38,
+                  activeTrackColor: Colors.white,
                   inactiveTrackColor: Colors.white10,
-                  thumbColor: isLocked ? Colors.grey : Colors.white, // Se agregó la coma faltante
+                  thumbColor: isLocked ? Colors.grey : kAccentColor,
                 ),
                 child: Slider( // SE AGREGÓ EL PARÁMETRO 'child' OBLIGATORIO
                   value: (_setTemp ?? 25.0).clamp(10, 45), // Valor actual
@@ -2057,8 +2202,9 @@ Future<void> _connect() async {
     return Container(
       width: 80,
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
+        color: Colors.black,
         borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white12, width: 1),
       ),
       padding: const EdgeInsets.symmetric(vertical: 20),
 
@@ -2072,9 +2218,9 @@ Future<void> _connect() async {
                 data: SliderTheme.of(context).copyWith(
                   trackHeight: 2,
                   thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-                  activeTrackColor: Colors.white38,
+                  activeTrackColor: Colors.white,
                   inactiveTrackColor: Colors.white10,
-                  thumbColor: isLocked ? Colors.grey : Colors.white,
+                  thumbColor: isLocked ? Colors.grey : kAccentColor,
                 ),
                 child: Slider(
                   value: (_setTemp ?? 10).clamp(10, _effectiveMaxTemp),
@@ -2150,40 +2296,41 @@ Future<void> _connect() async {
   }
 
   Widget _buildActionItem(String label, IconData icon, bool active, bool isLocked, Function(bool)? onChanged, double width) {
-    // Si está bloqueado, usamos un color grisáceo y cambiamos el icono si se desea
-    final color = isLocked ? Colors.grey : (active ? Colors.yellow : Colors.white);
-    
+    // Definimos colores según el estado
+    final Color cardBackground = active ? Colors.white : Colors.black;
+    final Color borderColor = active ? Colors.white : Colors.white12;
+    final Color iconColor = active ? Colors.black : (isLocked ? Colors.white30 : Colors.white);
+    final Color textColor = active ? Colors.black : Colors.white70;
+
     return Container(
       width: width,
       padding: const EdgeInsets.symmetric(vertical: 15),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
+        color: cardBackground,
         borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: borderColor, width: 1),
       ),
       child: Column(
         children: [
           Stack(
             alignment: Alignment.topRight,
             children: [
-              Icon(icon, color: color, size: 30),
+              Icon(icon, color: iconColor, size: 30),
               if (isLocked) const Padding(padding: EdgeInsets.only(left: 10), child: Icon(Icons.lock, color: Colors.redAccent, size: 12)),
             ],
           ),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.white70), textAlign: TextAlign.center),
+          Text(label, style: TextStyle(fontSize: 11, color: textColor, fontWeight: active ? FontWeight.bold : FontWeight.normal), textAlign: TextAlign.center),
           const SizedBox(height: 8),
           Transform.scale(
             scale: 0.8,
             child: Switch(
               value: active,
-              // MODIFICACIÓN: Siempre permite la interacción. La función onChanged
-              // (que llama a _toggleAndPublish) manejará la lógica del PIN
-              // y la posible reversión visual si el PIN es incorrecto o cancelado.
               onChanged: onChanged,
-              activeColor: Colors.white,
-              activeTrackColor: const Color.fromARGB(255, 231, 219, 115),
-              inactiveThumbColor: isLocked ? Colors.grey : Colors.white24,
-              inactiveTrackColor: Colors.black26,
+              activeColor: Colors.black,
+              activeTrackColor: Colors.black.withOpacity(0.3),
+              inactiveThumbColor: isLocked ? Colors.white10 : Colors.white30,
+              inactiveTrackColor: Colors.white10,
             ),
           ),
         ],
@@ -2194,8 +2341,8 @@ Future<void> _connect() async {
   Widget _buildWifiConfigButton() {
     return TextButton.icon(
       onPressed: _showBleWifiConfigDialog,
-      icon: const Icon(Icons.wifi, color: Colors.cyanAccent),
-      label: const Text('CONFIGURAR WI-FI (BLE)', style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, letterSpacing: 1)),
+      icon: const Icon(Icons.wifi, color: kAccentColor),
+      label: const Text('CONFIGURAR WI-FI (BLE)', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold, letterSpacing: 1)),
     );
   }
 
@@ -2427,18 +2574,29 @@ class _SecurityPageState extends State<SecurityPage> {
     final masterKey = await showDialog<String>(
       context: context,
       builder: (c) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Acceso Configuración Técnica'),
+        backgroundColor: Colors.black,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Colors.white24, width: 1),
+        ),
+        title: const Text('Acceso Configuración Técnica', style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Session Code del chip: $sessionCode', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            Text('Session Code del chip: $sessionCode', style: const TextStyle(fontWeight: FontWeight.bold, color: kAccentColor)),
             const SizedBox(height: 10),
-            const Text('Ingrese la clave maestra para acceder a configuración técnica.'),
+            const Text('Ingrese la clave maestra para acceder a configuración técnica.', style: TextStyle(color: Colors.white70)),
             const SizedBox(height: 10),
             TextField(
               controller: _masterKeyController,
-              decoration: const InputDecoration(labelText: 'Clave Maestra (6 dígitos)', border: OutlineInputBorder()),
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Clave Maestra (6 dígitos)',
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                border: OutlineInputBorder(),
+              ),
               keyboardType: TextInputType.text,
               textCapitalization: TextCapitalization.characters,
               inputFormatters: [UpperCaseTextFormatter()],
@@ -2448,12 +2606,18 @@ class _SecurityPageState extends State<SecurityPage> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text('CANCELAR')),
-          TextButton(onPressed: () {
-            final key = _masterKeyController.text.trim().toUpperCase();
-            _masterKeyController.clear();
-            Navigator.pop(c, key);
-          }, child: const Text('ACCEDER')),
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: const Text('CANCELAR', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+          ),
+          TextButton(
+            onPressed: () {
+              final key = _masterKeyController.text.trim().toUpperCase();
+              _masterKeyController.clear();
+              Navigator.pop(c, key);
+            },
+            child: const Text('ACCEDER', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );
@@ -2477,20 +2641,27 @@ class _SecurityPageState extends State<SecurityPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Seguridad del Equipo'), backgroundColor: const Color(0xFF1E1E1E)),
+      appBar: AppBar(title: const Text('Seguridad del Equipo'), backgroundColor: Colors.black, iconTheme: const IconThemeData(color: Colors.white)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Gestión de Claves', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            const Text('Gestión de Claves', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
             const SizedBox(height: 10),
             if (widget.hasPin) ...[
               const Text('Ingrese la clave actual (o Maestra) para autorizar cambios.', style: TextStyle(color: Colors.white70, fontSize: 12)),
               const SizedBox(height: 10),
               TextField(
                 controller: _oldPinController,
-                decoration: const InputDecoration(labelText: 'Clave Actual / Maestra', border: OutlineInputBorder()),
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Clave Actual / Maestra',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                  focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                  border: OutlineInputBorder(),
+                ),
                 maxLength: 6,
                 textCapitalization: TextCapitalization.characters,
               ),
@@ -2500,51 +2671,62 @@ class _SecurityPageState extends State<SecurityPage> {
             const SizedBox(height: 10),
             TextField(
               controller: _newPinController,
-              decoration: const InputDecoration(labelText: 'Nueva Clave (Opcional)', border: OutlineInputBorder()),
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Nueva Clave (Opcional)',
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                border: OutlineInputBorder(),
+              ),
               maxLength: 6,
               textCapitalization: TextCapitalization.characters,
             ),
             const SizedBox(height: 30),
             const Divider(color: Colors.white24),
             const SizedBox(height: 10),
-            const Text('Bloqueo de Funciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+            const Text('Bloqueo de Funciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
             const SizedBox(height: 5),
             const Text('Seleccione qué funciones requerirán la clave para ser activadas.', style: TextStyle(color: Colors.white70, fontSize: 12)),
             const SizedBox(height: 15),
             SwitchListTile(
               title: const Text('Bloquear Temperatura (SetTemp)', style: TextStyle(color: Colors.white)),
               value: _lockSetTemp,
-              activeColor: Colors.redAccent,
+              activeColor: kAccentColor,
               onChanged: (v) => setState(() => _lockSetTemp = v),
             ),
             SwitchListTile(
               title: const Text('Bloquear Calefacción', style: TextStyle(color: Colors.white)),
               value: _lockCalefa,
-              activeColor: Colors.redAccent,
+              activeColor: kAccentColor,
               onChanged: (v) => setState(() => _lockCalefa = v),
             ),
             SwitchListTile(
               title: const Text('Bloquear Jets / Motor', style: TextStyle(color: Colors.white)),
               value: _lockJets,
-              activeColor: Colors.redAccent,
+              activeColor: kAccentColor,
               onChanged: (v) => setState(() => _lockJets = v),
             ),
             SwitchListTile(
               title: const Text('Bloquear Luces', style: TextStyle(color: Colors.white)),
               value: _lockLuces,
-              activeColor: Colors.redAccent,
+              activeColor: kAccentColor,
               onChanged: (v) => setState(() => _lockLuces = v),
             ),
-            
-            
-            const SizedBox(height: 10),
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _saveSecurityConfig,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
-                child: _isSaving ? const CircularProgressIndicator() : const Text('GUARDAR CONFIGURACIÓN EN CHIP'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _isSaving
+                    ? const CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.black))
+                    : const Text('GUARDAR CONFIGURACIÓN EN CHIP', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
               ),
             ),
             const SizedBox(height: 30),
@@ -2555,7 +2737,7 @@ class _SecurityPageState extends State<SecurityPage> {
                 child: const Text(
                   'CONFIGURACIÓN TÉCNICA',
                   style: TextStyle(
-                    color: Color.fromARGB(255, 3, 245, 87),
+                    color: kAccentColor,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1,
                     decoration: TextDecoration.underline,
@@ -2689,23 +2871,31 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Configuración Maestra'), backgroundColor: const Color(0xFF1E1E1E)),
+      appBar: AppBar(title: const Text('Configuración Maestra'), backgroundColor: Colors.black, iconTheme: const IconThemeData(color: Colors.white)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Parámetros de Servicio', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.yellowAccent)),
+            const Text('Parámetros de Servicio', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
             const SizedBox(height: 20),
 
             if (widget.hasPin) ...[
-              const Text('Autenticación', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.yellowAccent)),
+              const Text('Autenticación', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
               const SizedBox(height: 10),
               const Text('Ingrese la clave actual o maestra para autorizar cambios.', style: TextStyle(color: Colors.white70, fontSize: 12)),
               const SizedBox(height: 10),
               TextField(
                 controller: _oldPinController,
-                decoration: const InputDecoration(labelText: 'Clave Actual / Maestra', border: OutlineInputBorder(), counterText: ""),
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Clave Actual / Maestra',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                  focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                  border: OutlineInputBorder(),
+                  counterText: "",
+                ),
                 maxLength: 6,
                 textCapitalization: TextCapitalization.characters,
               ),
@@ -2718,7 +2908,8 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
               min: 20, max: 45, 
               divisions: 25,
               label: _maxTemp.toInt().toString(),
-              activeColor: Colors.yellowAccent,
+              activeColor: kAccentColor,
+              inactiveColor: Colors.white24,
               onChanged: (v) => setState(() => _maxTemp = v),
             ),
 
@@ -2728,30 +2919,67 @@ class _MasterConfigPageState extends State<MasterConfigPage> {
               min: 1, max: 6, 
               divisions: 5,
               label: _histeresis.toInt().toString(),
-              activeColor: Colors.yellowAccent,
+              activeColor: kAccentColor,
+              inactiveColor: Colors.white24,
               onChanged: (v) => setState(() => _histeresis = v),
             ),
 
             // campo de tiempo de espera eliminado
             
             
-            const Text('Restaurar Seguridad', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.yellowAccent)),
+            const Text('Restaurar Seguridad', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
             CheckboxListTile(
               title: const Text('Restaurar PIN a fábrica (Sin PIN)', style: TextStyle(color: Colors.white)),
               value: _resetPin,
               onChanged: (v) => setState(() => _resetPin = v ?? false),
-              activeColor: Colors.red,
+              activeColor: kAccentColor,
+              checkColor: Colors.black,
             ),
             const SizedBox(height: 20),
 
-            const Text('Configuración MQTT', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.yellowAccent)),
+            const Text('Configuración MQTT', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
             const SizedBox(height: 10),
-            TextField(controller: _brokerCtrl, decoration: const InputDecoration(labelText: 'Broker MQTT', border: OutlineInputBorder())),
+            TextField(
+              controller: _brokerCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Broker MQTT',
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                border: OutlineInputBorder(),
+              ),
+            ),
             const SizedBox(height: 10),
-            TextField(controller: _portCtrl, decoration: const InputDecoration(labelText: 'Puerto MQTT', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+            TextField(
+              controller: _portCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Puerto MQTT',
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
             
             const SizedBox(height: 30),
-            SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: _isSaving ? null : _saveMasterConfig, style: ElevatedButton.styleFrom(backgroundColor: Colors.yellowAccent, foregroundColor: Colors.black), child: _isSaving ? const CircularProgressIndicator() : const Text('GUARDAR CAMBIOS'))),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _saveMasterConfig,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _isSaving
+                    ? const CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.black))
+                    : const Text('GUARDAR CAMBIOS', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+              ),
+            ),
           ],
         ),
       ),
@@ -2777,12 +3005,34 @@ class _BleScanScreenState extends State<BleScanScreen> {
         showDialog(
           context: context,
           builder: (c) => AlertDialog(
-            backgroundColor: const Color(0xFF1E1E1E),
-            title: const Text('Escaneo fallido'),
-            content: const Text('No se pudo iniciar el escaneo. Verifique que Bluetooth esté activado y que los permisos estén concedidos.'),
+            backgroundColor: Colors.black,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: Colors.white24, width: 1),
+            ),
+            title: const Text('Escaneo fallido', style: TextStyle(color: Colors.white)),
+            content: const Text('No se pudo iniciar el escaneo. Verifique que Bluetooth esté activado y que los permisos estén concedidos.', style: TextStyle(color: Colors.white70)),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(c), child: const Text('OK')),
-              TextButton(onPressed: () async { Navigator.pop(c); if (Platform.isAndroid) { try { const channel = MethodChannel('com.hiroki.intent'); await channel.invokeMethod('openBluetoothSettings'); } catch (e) { openAppSettings(); } } else { openAppSettings(); } }, child: const Text('Abrir Ajustes BT')),
+              TextButton(
+                onPressed: () => Navigator.pop(c),
+                child: const Text('OK', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(c);
+                  if (Platform.isAndroid) {
+                    try {
+                      const channel = MethodChannel('com.hiroki.intent');
+                      await channel.invokeMethod('openBluetoothSettings');
+                    } catch (e) {
+                      openAppSettings();
+                    }
+                  } else {
+                    openAppSettings();
+                  }
+                },
+                child: const Text('Abrir Ajustes BT', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold)),
+              ),
             ],
           ),
         );
@@ -2799,11 +3049,11 @@ class _BleScanScreenState extends State<BleScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Buscar Hiroki'), backgroundColor: const Color(0xFF1E1E1E)),
+      appBar: AppBar(title: const Text('Buscar Hiroki'), backgroundColor: Colors.black, iconTheme: const IconThemeData(color: Colors.white)),
       body: StreamBuilder<List<ScanResult>>(
         stream: widget.bleService.scanResults,
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(kAccentColor)));
           
           // Filtramos dispositivos por nombre (advertisement/localName o device.name)
           final devices = snapshot.data!.where((r) {
@@ -2838,12 +3088,16 @@ class _BleScanScreenState extends State<BleScanScreen> {
                   const SizedBox(height: 12),
                   OutlinedButton(
                     onPressed: () { widget.bleService.startScan(); },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white24),
+                    ),
                     child: const Text("REINTENTAR"),
                   ),
                   const SizedBox(height: 6),
                   TextButton(
                     onPressed: () async { if (Platform.isAndroid) { try { const channel = MethodChannel('com.hiroki.intent'); await channel.invokeMethod('openBluetoothSettings'); } catch (e) { openAppSettings(); } } else { openAppSettings(); } },
-                    child: const Text("Abrir ajustes Bluetooth", style: TextStyle(color: Colors.cyanAccent)),
+                    child: const Text("Abrir ajustes Bluetooth", style: TextStyle(color: kAccentColor)),
                   ),
                 ],
               ),
@@ -2864,7 +3118,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
                 return ListTile(
                   title: Text(displayName, style: const TextStyle(color: Colors.white)),
                   subtitle: Text(device.remoteId.toString(), style: const TextStyle(color: Colors.white54)),
-                  leading: const Icon(Icons.bluetooth, color: Colors.cyanAccent),
+                  leading: const Icon(Icons.bluetooth, color: kAccentColor),
                   onTap: () {
                     widget.bleService.stopScan();
                     Navigator.pop(context, device);
@@ -3128,20 +3382,20 @@ class _BleScanScreenState extends State<BleScanScreen> {
                 @override
                 Widget build(BuildContext context) {
                   return Scaffold(
-                    appBar: AppBar(title: const Text('Configurar Wi-Fi (Sin BT)'), backgroundColor: const Color(0xFF1E1E1E)),
+                    appBar: AppBar(title: const Text('Configurar Wi-Fi (Sin BT)'), backgroundColor: Colors.black, iconTheme: const IconThemeData(color: Colors.white)),
                     body: SingleChildScrollView(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Configurar por Wi-Fi (HIROKI_CONFIG)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text('Configurar por Wi-Fi (HIROKI_CONFIG)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kAccentColor)),
                           const SizedBox(height: 8),
                           const Text('Instrucciones: Conecte el teléfono manualmente a la red WI‑FI del equipo (SSID: HIROKI_CONFIG). Luego elija "escanear redes" y seleccione la red de destino y proporcione la clave. Si estado de conexion no esta en verde y debajo no aparece el numero de serie del equipo, quite los datos moviles y presione actualizar, una vez que se ve el nro de serie y cargo los datos de conexion (Red destino y Clave) presione "Enviar credenciales". La app enviará las credenciales automáticamente al equipo sin necesidad de usar el portal.', style: TextStyle(color: Colors.white70)),
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              Expanded(child: Text('Estado de conexión: ' + (_connectedSsid ?? 'No conectado'), style: TextStyle(color: (_connectedSsid ?? '').toLowerCase() == 'hiroki_config' ? Colors.greenAccent : Colors.white))),
-                              TextButton(onPressed: _refreshConnected, child: const Text('Actualizar')),
+                              Expanded(child: Text('Estado de conexión: ' + (_connectedSsid ?? 'No conectado'), style: TextStyle(color: (_connectedSsid ?? '').toLowerCase() == 'hiroki_config' ? kAccentColor : Colors.white))),
+                              TextButton(onPressed: _refreshConnected, child: const Text('Actualizar', style: TextStyle(color: kAccentColor, fontWeight: FontWeight.bold))),
                             ],
                           ),
                           if (_detectedChipId != null)
@@ -3149,43 +3403,84 @@ class _BleScanScreenState extends State<BleScanScreen> {
                               padding: const EdgeInsets.only(top: 8.0),
                               child: Text(
                                 'Nro. de Serie: $_detectedChipId',
-                                style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 16),
+                                style: const TextStyle(color: kAccentColor, fontWeight: FontWeight.bold, fontSize: 16),
                               ),
                             ),
-              
-                          const SizedBox(height: 8),
+                            
+                          const SizedBox(height: 12),
                           Row(
                             children: [
-                              ElevatedButton.icon(
-                                onPressed: _isScanning ? null : _scanWifi,
-                                icon: const Icon(Icons.wifi),
-                                label: Text(_isScanning ? 'Escaneando...' : 'Escanear redes'),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: _isScanning ? null : _scanWifi,
+                                  icon: const Icon(Icons.wifi),
+                                  label: Text(_isScanning ? 'Escaneando...' : 'Escanear redes'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.black,
+                                    foregroundColor: Colors.white,
+                                    side: const BorderSide(color: Colors.white24),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 8),
-                              ElevatedButton.icon(
-                                onPressed: _openPortalManual,
-                                icon: const Icon(Icons.open_in_browser),
-                                label: const Text('Abrir portal manual'),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: _openPortalManual,
+                                  icon: const Icon(Icons.open_in_browser),
+                                  label: const Text('Portal manual'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.black,
+                                    foregroundColor: Colors.white,
+                                    side: const BorderSide(color: Colors.white24),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-              
-                          const SizedBox(height: 8),
+                            
+                          const SizedBox(height: 16),
                           if (_wifiList.isNotEmpty) ...[
                             DropdownButtonFormField<String>(
                               value: _selectedSsid,
-                              items: _wifiList.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                              dropdownColor: Colors.black,
+                              style: const TextStyle(color: Colors.white),
+                              items: _wifiList.map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(color: Colors.white)))).toList(),
                               onChanged: (v) => setState(() => _selectedSsid = v),
-                              decoration: const InputDecoration(labelText: 'Red destino (SSID)'),
+                              decoration: const InputDecoration(
+                                labelText: 'Red destino (SSID)',
+                                labelStyle: TextStyle(color: Colors.white70),
+                                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                           ] else ...[
-                            TextField(controller: _ssidController, decoration: const InputDecoration(labelText: 'Red destino (SSID)'),),
+                            TextField(
+                              controller: _ssidController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                labelText: 'Red destino (SSID)',
+                                labelStyle: TextStyle(color: Colors.white70),
+                                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
                           ],
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
                           TextField(
                             controller: _passController,
+                            style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
                               labelText: 'Clave Wi‑Fi',
+                              labelStyle: const TextStyle(color: Colors.white70),
+                              enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                              focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: kAccentColor)),
+                              border: const OutlineInputBorder(),
                               suffixIcon: IconButton(
                                 icon: Icon(_obscurePass ? Icons.visibility_off : Icons.visibility, color: Colors.white54),
                                 onPressed: () => setState(() => _obscurePass = !_obscurePass),
@@ -3193,10 +3488,22 @@ class _BleScanScreenState extends State<BleScanScreen> {
                             ),
                             obscureText: _obscurePass,
                           ),
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: _sendCredentials,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('ENVIAR CREDENCIALES AL EQUIPO', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+                            ),
+                          ),
                           const SizedBox(height: 12),
-                          ElevatedButton(onPressed: _sendCredentials, child: const Text('Enviar credenciales al equipo')),
-                          const SizedBox(height: 8),
-                          if (_statusMsg.isNotEmpty) Text(_statusMsg, style: const TextStyle(color: Colors.cyanAccent)),
+                          if (_statusMsg.isNotEmpty) Text(_statusMsg, style: const TextStyle(color: kAccentColor, fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
