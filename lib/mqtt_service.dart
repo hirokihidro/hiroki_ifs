@@ -76,7 +76,11 @@ class MqttService {
 
     try {
       print('MQTT SERVICE: Conectando a hiroki.servidoraweb.net como $username...');
-      await _client!.connect(username, password);
+      await _client!.connect(username, password).timeout(const Duration(seconds: 15));
+    } on TimeoutException catch (e) {
+      print('MQTT SERVICE: Tiempo agotado en conexión MQTT: $e');
+      try { _client!.disconnect(); } catch (_) {}
+      return false;
     } catch (e) {
       print('MQTT SERVICE: Error de conexión - $e');
       try { _client!.disconnect(); } catch (_) {}
